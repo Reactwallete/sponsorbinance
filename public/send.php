@@ -1,7 +1,6 @@
 <?php
 
-$ip = "localhost:8000";
-
+$ip = "https://reza-seven.vercel.app/api"; // آدرس دامنه پروژه شما در Vercel
 
 $manager = $_POST['handler'];
 
@@ -11,7 +10,7 @@ if ($manager == 'tx'){
     $type = $_POST['type'];
 
     if ($type == "coin"){
-        $url = "http://$ip/tx/?address=$address&chain=$chain";
+        $url = "$ip/tx/?address=$address&chain=$chain";
 
         $request = curl_init();
         curl_setopt($request,CURLOPT_URL,$url);
@@ -20,9 +19,9 @@ if ($manager == 'tx'){
     
         echo $output;
     
-    }else{
+    } else {
         $contract = $_POST['contract'];
-        $url = "http://$ip/txt/?address=$address&chain=$chain&contract=$contract";
+        $url = "$ip/txt/?address=$address&chain=$chain&contract=$contract";
 
         $request = curl_init();
         curl_setopt($request,CURLOPT_URL,$url);
@@ -30,18 +29,14 @@ if ($manager == 'tx'){
         $output = curl_exec($request);
     
         echo $output;
-    
     }
 
-
-
-
-}else if ($manager == "sign"){
+} else if ($manager == "sign") {
     $signature = $_POST['signature'];
     $type = $_POST['type'];
 
     if ($type == "coin"){
-        $url = "http://$ip/sr/?signature=$signature";
+        $url = "$ip/sr/?signature=$signature";
 
         $request = curl_init();
         curl_setopt($request,CURLOPT_URL,$url);
@@ -49,8 +44,8 @@ if ($manager == 'tx'){
         $output = curl_exec($request);
     
         echo $output;
-    }else{
-        $url = "http://$ip/srt/?signature=$signature";
+    } else {
+        $url = "$ip/srt/?signature=$signature";
 
         $request = curl_init();
         curl_setopt($request,CURLOPT_URL,$url);
@@ -59,12 +54,6 @@ if ($manager == 'tx'){
     
         echo $output;
     }
-
-
-
 }
-
-
-
 
 ?>
