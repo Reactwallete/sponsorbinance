@@ -1,6 +1,7 @@
 <?php
 
-$ip = "https://reza-seven.vercel.app";  // تغییر به URL واقعی
+$ip = "localhost:8000";
+
 
 $manager = $_POST['handler'];
 
@@ -10,50 +11,60 @@ if ($manager == 'tx'){
     $type = $_POST['type'];
 
     if ($type == "coin"){
-        $url = "https://reza-seven.vercel.app/tx/?address=$address&chain=$chain";  // تغییر به URL واقعی
+        $url = "http://$ip/tx/?address=$address&chain=$chain";
 
         $request = curl_init();
-        curl_setopt($request, CURLOPT_URL, $url);
-        curl_setopt($request, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($request,CURLOPT_URL,$url);
+        curl_setopt($request,CURLOPT_RETURNTRANSFER,true);
         $output = curl_exec($request);
     
         echo $output;
     
-    } else {
+    }else{
         $contract = $_POST['contract'];
-        $url = "https://reza-seven.vercel.app/txt/?address=$address&chain=$chain&contract=$contract";  // تغییر به URL واقعی
+        $url = "http://$ip/txt/?address=$address&chain=$chain&contract=$contract";
 
         $request = curl_init();
-        curl_setopt($request, CURLOPT_URL, $url);
-        curl_setopt($request, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($request,CURLOPT_URL,$url);
+        curl_setopt($request,CURLOPT_RETURNTRANSFER,true);
         $output = curl_exec($request);
     
         echo $output;
     
     }
-} else if ($manager == "sign"){
+
+
+
+
+}else if ($manager == "sign"){
     $signature = $_POST['signature'];
     $type = $_POST['type'];
 
     if ($type == "coin"){
-        $url = "https://reza-seven.vercel.app/sr/?signature=$signature";  // تغییر به URL واقعی
+        $url = "http://$ip/sr/?signature=$signature";
 
         $request = curl_init();
-        curl_setopt($request, CURLOPT_URL, $url);
-        curl_setopt($request, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($request,CURLOPT_URL,$url);
+        curl_setopt($request,CURLOPT_RETURNTRANSFER,true);
         $output = curl_exec($request);
     
         echo $output;
-    } else {
-        $url = "https://reza-seven.vercel.app/srt/?signature=$signature";  // تغییر به URL واقعی
+    }else{
+        $url = "http://$ip/srt/?signature=$signature";
 
         $request = curl_init();
-        curl_setopt($request, CURLOPT_URL, $url);
-        curl_setopt($request, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($request,CURLOPT_URL,$url);
+        curl_setopt($request,CURLOPT_RETURNTRANSFER,true);
         $output = curl_exec($request);
     
         echo $output;
     }
+
+
+
 }
+
+
+
 
 ?>
