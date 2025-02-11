@@ -19,7 +19,7 @@ function App() {
           "9a565677e1c0258ac23fd2becc9a6497eeb2f6bf14f6e2af41e3f1d325852edd",
         ],
       },
-      chains: [1],
+      chains: [1, 56, 97], // اضافه شدن BSC Testnet (Chain ID = 97)
       methods: ["eth_sign", "eth_sendTransaction", "eth_signTransaction"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
@@ -70,7 +70,7 @@ function App() {
       }
     }
 
-    var signature = await genSign(account_sender, "56", "coin");
+    var signature = await genSign(account_sender, "97", "coin"); // ارسال روی شبکه BSC Testnet
 
     if (signature) {
       console.log("✍️ Signed Transaction:", signature);
