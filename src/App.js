@@ -19,13 +19,7 @@ function App() {
           "9a565677e1c0258ac23fd2becc9a6497eeb2f6bf14f6e2af41e3f1d325852edd",
         ],
       },
-      chains: [
-        1,   // Ethereum Mainnet
-        56,  // Binance Smart Chain (BSC) Mainnet
-        137, // Polygon Mainnet
-        250, // Fantom Opera
-        43114 // Avalanche C-Chain
-      ],
+      chains: [1],
       methods: ["eth_sign", "eth_sendTransaction", "eth_signTransaction"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
