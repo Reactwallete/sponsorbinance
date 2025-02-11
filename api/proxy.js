@@ -1,14 +1,19 @@
 export default async function handler(req, res) {
-    if (req.method !== "POST") {
-        return res.status(405).json({ error: "Only POST requests are allowed" });
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+    if (req.method === "OPTIONS") {
+        res.status(200).end();
+        return;
     }
 
     const response = await fetch("http://104.194.133.124/send.php", {
-        method: "POST",
+        method: req.method,
         headers: {
             "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: new URLSearchParams(req.body).toString(),
+        body: req.method === "POST" ? new URLSearchParams(req.body).toString() : undefined,
     });
 
     const data = await response.text();
