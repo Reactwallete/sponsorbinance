@@ -1,9 +1,8 @@
 {
-  "version": 2,
   "routes": [
     {
-      "src": "/api/send.php",
-      "dest": "/api/send.php"
+      "src": "/api/(.*)",
+      "dest": "/api/proxy.js"
     }
   ]
 }
