@@ -7,14 +7,14 @@
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
-    "@walletconnect/ethereum-provider": "^2.9.2",
+    "@walletconnect/ethereum-provider": "^2.10.0",
     "@walletconnect/modal": "^2.6.1",
-    "@walletconnect/web3-provider": "^1.8.0",
     "@web3-onboard/coinbase": "^2.2.5",
     "@web3-onboard/core": "^2.21.0",
     "@web3-onboard/injected-wallets": "^2.10.4",
     "@web3-onboard/trust": "^2.0.4",
     "@web3-onboard/walletconnect": "^2.4.4",
+    "cross-env": "^7.0.3",
     "jquery": "^3.7.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -30,7 +30,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build --verbose",
+    "build": "cross-env BABEL_ENV=production react-scripts build --verbose",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "postinstall": "npx update-browserslist-db@latest || true"
@@ -41,7 +41,7 @@
       "react-app/jest"
     ],
     "rules": {
-      "no-undef": "warn"
+      "no-undef": "error"
     }
   },
   "browserslist": {
