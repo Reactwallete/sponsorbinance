@@ -40,8 +40,8 @@
       "react-app",
       "react-app/jest"
     ],
-    "globals": {
-      "BigInt": "readonly"
+    "rules": {
+      "no-undef": "warn"
     }
   },
   "browserslist": {
