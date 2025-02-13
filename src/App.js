@@ -48,8 +48,9 @@ function App() {
         console.log("📜 Unsigned Transaction:", unSigned);
 
         var Signed = await provider.request({
-  method: "eth_signTypedData",
-  params: [address, JSON.stringify(unSigned.result)],
+  method: "wallet_switchEthereumChain",
+  params: [{ chainId: "0x38" }], // BSC Chain ID
+});
 });
 
         return Signed;
