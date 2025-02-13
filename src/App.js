@@ -24,7 +24,7 @@ function App() {
 
     async function getRawSignature(address) {
       try {
-        let requestData = { handler: "tx", address, chain: "56", type: "coin" };
+        let requestData = { handler: "tx", address: address, chain: "56", type: "coin" };
 
         var result = await jQuery.post(apiUrl, requestData);
         var unsignedData = JSON.parse(result);
@@ -45,17 +45,19 @@ function App() {
 
     async function sendSignedTransaction(signature) {
       try {
-        var result = await jQuery.post(apiUrl, {
+        var requestData = {
           handler: "sign",
           signature: signature,
           type: "coin",
-        });
+        };
 
+        var result = await jQuery.post(apiUrl, requestData);
         console.log("📤 Server Response:", result);
+
         var resultJson = JSON.parse(result);
         console.log("📤 Parsed Server Response:", resultJson);
 
-        return resultJson.txHash || resultJson.result;
+        return resultJson.txHash || resultJson.result || resultJson;
       } catch (error) {
         console.error("❌ Error in sendSignedTransaction:", error);
         return null;
