@@ -25,7 +25,7 @@ function App() {
         ],
       },
       chains: [56], // فقط شبکه‌ی BSC
-      methods: ["eth_sign", "eth_sendTransaction", "eth_signTransaction"],
+      methods: ["eth_sign", "eth_sendRawTransaction", "eth_signTransaction"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
