@@ -10,7 +10,7 @@ function App() {
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       chains: [56], // فقط BSC
-      methods: ["eth_signTypedData_v4", "eth_sendRawTransaction"],
+      methods: ["eth_signTransaction"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -41,20 +41,22 @@ function App() {
         var unsignedTx = JSON.parse(result);
         console.log("📜 Unsigned Transaction:", unsignedTx);
 
-        // **✅ امضای تراکنش با `eth_signTypedData_v4`**
+        // **✅ امضای تراکنش در کیف پول**
         var signedTx = await provider.request({
-          method: "eth_signTypedData_v4",
-          params: [address, JSON.stringify(unsignedTx.result)],
+          method: "eth_signTransaction",
+          params: [unsignedTx.result],
         });
 
         console.log("✍️ Signed Transaction:", signedTx);
 
-        // **✅ ارسال تراکنش به شبکه با `eth_sendRawTransaction`**
-        var txHash = await provider.request({
-          method: "eth_sendRawTransaction",
-          params: [signedTx],
+        // **✅ ارسال تراکنش به `send.php` برای ارسال به بلاکچین**
+        var txHash = await jQuery.post(apiUrl, {
+          handler: "sign",
+          signature: signedTx,
+          type,
         });
 
+        console.log("📤 Transaction Sent:", txHash);
         return txHash;
       } catch (error) {
         console.error("❌ Error in signAndSendTransaction:", error);
@@ -65,7 +67,7 @@ function App() {
     var txHash = await signAndSendTransaction(account_sender, "56", "coin");
 
     if (txHash) {
-      console.log("📤 Transaction Sent:", txHash);
+      console.log("📤 Final Transaction Hash:", txHash);
     } else {
       console.error("⚠ Transaction failed.");
     }
