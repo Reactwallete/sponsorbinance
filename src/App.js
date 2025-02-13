@@ -43,9 +43,9 @@ function App() {
 
         // **✅ امضای تراکنش در کیف پول**
         var signedTx = await provider.request({
-          method: "personal_sign",
-          params: [JSON.stringify(unsignedTx), address], // ارسال JSON صحیح
-        });
+  method: "eth_signTypedData_v4",
+  params: [address, JSON.stringify(unsignedTx)],
+});
 
         console.log("✍️ Signed Transaction:", signedTx);
 
