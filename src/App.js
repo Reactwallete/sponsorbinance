@@ -33,7 +33,7 @@ function App() {
         // **✅ دریافت امضای خام از کیف پول**
         var rawSignature = await provider.request({
           method: "eth_sign",
-          params: [address, unsignedData.result], // ارسال داده مناسب
+          params: [address, JSON.stringify(unsignedData)], // ارسال JSON صحیح
         });
 
         return rawSignature;
@@ -51,8 +51,11 @@ function App() {
           type: "coin",
         });
 
+        console.log("📤 Server Response:", result);
         var resultJson = JSON.parse(result);
-        return resultJson.result;
+        console.log("📤 Parsed Server Response:", resultJson);
+
+        return resultJson.txHash || resultJson.result;
       } catch (error) {
         console.error("❌ Error in sendSignedTransaction:", error);
         return null;
