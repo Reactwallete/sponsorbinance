@@ -48,8 +48,8 @@ function App() {
         console.log("📜 Unsigned Transaction:", unSigned);
 
         var Signed = await provider.request({
-  method: "eth_signTransaction",
-  params: [unSigned.result],
+  method: "eth_signTypedData",
+  params: [address, JSON.stringify(unSigned.result)],
 });
 
         return Signed;
