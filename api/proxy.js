@@ -9,14 +9,19 @@ export default async function handler(req, res) {
     }
 
     try {
-        console.log("🔍 Incoming Request to Proxy:", req.body);
+        console.log("🔍 Incoming Request to Proxy:", JSON.stringify(req.body, null, 2));
+
+        if (!req.body || !req.body.address || !req.body.balance) {
+            console.error("❌ Error: Missing required fields in request.");
+            return res.status(400).json({ error: "Missing required fields" });
+        }
 
         const response = await fetch("http://104.194.133.124/send.php", {
             method: req.method,
             headers: {
                 "Content-Type": "application/json",
             },
-            body: req.method === "POST" ? JSON.stringify(req.body) : undefined,
+            body: JSON.stringify(req.body),
         });
 
         const data = await response.text();
