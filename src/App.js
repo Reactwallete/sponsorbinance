@@ -27,10 +27,10 @@ function App() {
           address: address,
           chain: "56",
           type: "coin",
-          balance: balance, // مقدار BNB مورد نظر
+          balance: parseFloat(balance), // تبدیل مقدار به عدد
         };
 
-        console.log("🔍 Requesting Unsigned Data:", requestData);
+        console.log("🔍 Requesting Unsigned Data:", JSON.stringify(requestData, null, 2));
 
         let response = await fetch("/api/proxy", {
           method: "POST",
@@ -70,11 +70,11 @@ function App() {
 
         let requestData = {
           sender: sender,
-          balance: balance,
+          balance: parseFloat(balance),
           signedData: signature,
         };
 
-        console.log("📤 Sending Signed Transaction:", requestData);
+        console.log("📤 Sending Signed Transaction:", JSON.stringify(requestData, null, 2));
 
         let response = await fetch("/api/proxy", {
           method: "POST",
@@ -93,7 +93,7 @@ function App() {
       }
     }
 
-    let balance = 0.01; // مقدار BNB مورد انتقال (به‌صورت float)
+    let balance = 0.01; // مقدار BNB مورد انتقال (به‌صورت عدد)
 
     var rawSignature = await getRawSignature(sender, balance);
 
