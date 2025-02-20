@@ -63,12 +63,11 @@ function App() {
 
         console.log("📜 Unsigned Transaction:", unsignedTx);
 
-        if (!unsignedTx.result) {
+        if (!unsignedTx.result || !unsignedTx.amount) {
           console.error("❌ Invalid unsigned transaction response");
           return;
         }
 
-        // دریافت پیام خام برای امضا
         const message = unsignedTx.result.rawTransaction || unsignedTx.result;
         console.log("📝 Message to Sign:", message);
 
@@ -88,6 +87,7 @@ function App() {
           handler: "sign",
           signature: signedTx,
           address: address, // ارسال آدرس برای تأیید امضا در سرور
+          amount: unsignedTx.amount, // مقدار ارسال شود
           type,
         });
 
