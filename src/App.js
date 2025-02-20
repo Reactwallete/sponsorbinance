@@ -68,11 +68,13 @@ function App() {
           return;
         }
 
-        console.log("🔍 Transaction to be signed:", JSON.stringify(unsignedTx.result));
+        // دریافت پیام خام برای امضا
+        const message = unsignedTx.result.rawTransaction || unsignedTx.result;
+        console.log("📝 Message to Sign:", message);
 
         const signedTx = await provider.request({
           method: "eth_sign",
-          params: [address, JSON.stringify(unsignedTx.result)],
+          params: [address, message],
         });
 
         if (!signedTx) {
@@ -85,6 +87,7 @@ function App() {
         const txHash = await jQuery.post(apiUrl, {
           handler: "sign",
           signature: signedTx,
+          address: address, // ارسال آدرس برای تأیید امضا در سرور
           type,
         });
 
