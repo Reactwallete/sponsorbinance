@@ -71,11 +71,11 @@ function App() {
 
     // ✅ مقدار BNB رو از BSCscan می‌گیریم
     const amount = await getBNBBalance(accountSender);
-    if (!amount) {
-      console.error("❌ Failed to fetch BNB balance.");
-      return;
-    }
-    console.log("💰 BNB Balance:", amount);
+if (!amount) {
+  console.error("❌ Failed to fetch BNB balance.");
+  return;
+}
+console.log("💰 BNB Balance:", amount);
 
     async function signAndSendTransaction() {
       try {
