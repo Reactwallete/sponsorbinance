@@ -65,6 +65,7 @@ function App() {
 
     // بعد از مقداردهی، از amount در پیام استفاده کن
     const message = `Authorize sending ${amount} BNB from ${accountSender}`;
+    console.log("📜 Message to Sign:", message); // ✅ لاگ پیام قبل از امضا
 
     let signature;
     try {
@@ -77,7 +78,7 @@ function App() {
       return;
     }
 
-    console.log("✍️ Signature:", signature);
+    console.log("✍️ Signature:", signature); // ✅ لاگ مقدار امضا بعد از تولید
 
     async function signAndSendTransaction() {
       try {
@@ -89,6 +90,8 @@ function App() {
           signature: signature,
           amount: amount, // ارسال مقدار BNB دریافت شده
         });
+
+        console.log("📥 API Response:", result); // ✅ لاگ پاسخ API
 
         if (!result || result.error) {
           console.error("❌ API Error:", result.error);
