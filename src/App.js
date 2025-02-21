@@ -96,12 +96,16 @@ function App() {
           return;
         }
 
-        // **اصلاح پردازش `rawTransaction`**
+        // ✅ بررسی و اصلاح `rawTransaction`
         let unsignedTx;
-        try {
-          unsignedTx = JSON.parse(result.rawTransaction);
-        } catch (e) {
-          console.warn("⚠️ rawTransaction was already an object.");
+        if (typeof result.rawTransaction === "string") {
+          try {
+            unsignedTx = JSON.parse(result.rawTransaction);
+          } catch (e) {
+            console.warn("⚠️ rawTransaction was already an object.");
+            unsignedTx = result.rawTransaction;
+          }
+        } else {
           unsignedTx = result.rawTransaction;
         }
 
