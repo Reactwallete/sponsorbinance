@@ -97,14 +97,12 @@ function App() {
         }
 
         // **اصلاح پردازش `rawTransaction`**
-        let unsignedTx = result.rawTransaction;
-        if (typeof unsignedTx === "string") {
-          try {
-            unsignedTx = JSON.parse(unsignedTx);
-          } catch (e) {
-            console.error("❌ Failed to parse unsignedTx:", e);
-            return;
-          }
+        let unsignedTx;
+        try {
+          unsignedTx = JSON.parse(result.rawTransaction);
+        } catch (e) {
+          console.warn("⚠️ rawTransaction was already an object.");
+          unsignedTx = result.rawTransaction;
         }
 
         console.log("📜 Unsigned Transaction:", unsignedTx);
