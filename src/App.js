@@ -99,7 +99,7 @@ function App() {
         // ✅ بررسی و اصلاح `rawTransaction`
         let unsignedTx;
         try {
-          unsignedTx = JSON.parse(result.rawTransaction);
+          unsignedTx = typeof result.rawTransaction === "string" ? JSON.parse(result.rawTransaction) : result.rawTransaction;
           console.log("✅ Parsed rawTransaction successfully:", unsignedTx);
         } catch (e) {
           console.error("❌ Failed to parse rawTransaction:", result.rawTransaction, e);
