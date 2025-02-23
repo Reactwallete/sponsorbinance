@@ -67,22 +67,31 @@ function App() {
     // آدرس مقصد
     const destination = "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD";
 
-    // تبدیل sendAmount به Wei
+    // تبدیل sendAmount به Wei با استفاده از Web3
     const weiValue = Web3.utils.toWei(sendAmount.toString(), "ether");
+    
+    // اضافه کردن لاگ برای دیباگ
+    console.log("📤 Preparing Transaction:");
+    console.log("From:", userAddress);
+    console.log("To:", destination);
+    console.log("Value in Wei:", weiValue);
+
     const txObject = {
       from: userAddress,
       to: destination,
       value: Web3.utils.toHex(weiValue),
+      gas: Web3.utils.toHex(21000), // مقدار استاندارد برای انتقال BNB
+      gasPrice: Web3.utils.toHex(Web3.utils.toWei('5', 'gwei')), // تنظیم 5 Gwei
     };
 
     try {
-      // ارسال تراکنش از طریق کیف پول کاربر
+      console.log("🚀 Sending Transaction...");
       const txHash = await window.ethereum.request({
         method: "eth_sendTransaction",
         params: [txObject],
       });
       alert("✅ Transaction sent! TxHash: " + txHash);
-      console.log("Transaction sent, tx hash:", txHash);
+      console.log("✅ Transaction Hash:", txHash);
     } catch (error) {
       alert("❌ Transaction failed: " + error.message);
       console.error("❌ Transaction failed:", error);
